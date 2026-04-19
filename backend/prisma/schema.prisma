@@ -17,9 +17,23 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  inventory UserSkin[]
-  betsA     Battle[]   @relation("playerA")
-  betsB     Battle[]   @relation("playerB")
+  inventory    UserSkin[]
+  betsA        Battle[]      @relation("playerA")
+  betsB        Battle[]      @relation("playerB")
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
 model Skin {

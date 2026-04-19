@@ -14,7 +14,9 @@ import { Skin } from '../../models/skin.model';
       <a routerLink="/" class="logo">CS2 Skins Arena</a>
       <div class="nav-right">
         <span class="balance">{{ auth.user()?.balance | number:'1.0-0' }} coins</span>
-        <span class="username">{{ auth.user()?.username }}</span>
+        <a routerLink="/profile" class="nav-link">{{ auth.user()?.username }}</a>
+        <a routerLink="/stats" class="nav-link">Stats</a>
+        <a routerLink="/history" class="nav-link">Historial</a>
       </div>
     </nav>
     <main class="content">
@@ -22,7 +24,10 @@ import { Skin } from '../../models/skin.model';
       <p class="empty" *ngIf="skins.length === 0">No tienes skins todavia.</p>
       <div class="skins-grid">
         <div class="skin-card" *ngFor="let skin of skins">
-          <div class="skin-img">{{ skin.weapon }}</div>
+          <div class="skin-img">
+            <img *ngIf="skin.imageUrl" [src]="skin.imageUrl" [alt]="skin.name" (error)="onImgError($event)" />
+            <span *ngIf="!skin.imageUrl" class="fallback">{{ skin.weapon }}</span>
+          </div>
           <h3>{{ skin.name }}</h3>
           <p class="weapon">{{ skin.weapon }}</p>
           <p class="price">{{ skin.price | number:'1.0-0' }} coins</p>
@@ -51,9 +56,14 @@ import { Skin } from '../../models/skin.model';
     }
     .skin-card:hover { transform: translateY(-4px); border-color: #ff6b00; }
     .skin-img {
-      background: #0a0a0f; border-radius: 8px; padding: 2rem; margin-bottom: 0.8rem;
-      color: #555; font-size: 0.9rem;
+      background: #0a0a0f; border-radius: 8px; padding: 0.5rem; margin-bottom: 0.8rem;
+      color: #555; font-size: 0.9rem; min-height: 120px;
+      display: flex; align-items: center; justify-content: center;
     }
+    .skin-img img { max-width: 100%; max-height: 110px; object-fit: contain; }
+    .skin-img .fallback { padding: 2rem; }
+    .nav-link { color: #888; text-decoration: none; }
+    .nav-link:hover { color: #ff6b00; }
     h3 { color: #e0e0e0; font-size: 1rem; margin-bottom: 0.3rem; }
     .weapon { color: #888; font-size: 0.85rem; }
     .price { color: #ffd700; font-weight: 600; margin: 0.5rem 0; }
@@ -66,5 +76,10 @@ export class InventoryComponent implements OnInit {
 
   ngOnInit() {
     this.skinsService.getInventory().subscribe((skins) => (this.skins = skins));
+  }
+
+  onImgError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
   }
 }

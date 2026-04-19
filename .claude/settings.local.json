@@ -7,7 +7,11 @@
       "Bash(curl -s http://localhost:3000/api/health)",
       "Bash(curl *)",
       "Bash(npx @angular/cli@17 new frontend --routing --style=scss --skip-git --skip-tests --standalone)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(node -e ' *)",
+      "Bash(node src/index.js)",
+      "Bash(kill %1)"
     ]
   }
 }

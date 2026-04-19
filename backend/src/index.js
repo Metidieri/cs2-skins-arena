@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 
 const authRoutes = require('./routes/auth');
 const skinsRoutes = require('./routes/skins');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/skins', skinsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
