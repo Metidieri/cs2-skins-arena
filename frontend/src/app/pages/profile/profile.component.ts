@@ -4,22 +4,14 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { UsersService } from '../../services/users.service';
 import { UserProfile } from '../../models/transaction.model';
+import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, NavbarComponent],
   template: `
-    <nav class="navbar">
-      <a routerLink="/" class="logo">CS2 Skins Arena</a>
-      <div class="nav-right">
-        <span class="balance">{{ auth.user()?.balance | number:'1.0-0' }} coins</span>
-        <a routerLink="/inventory" class="nav-link">Inventario</a>
-        <a routerLink="/stats" class="nav-link">Stats</a>
-        <a routerLink="/history" class="nav-link">Historial</a>
-        <button class="logout-btn" (click)="auth.logout()">Salir</button>
-      </div>
-    </nav>
+    <app-navbar></app-navbar>
     <main class="content" *ngIf="profile">
       <div class="profile-card">
         <div class="avatar">{{ profile.username.charAt(0).toUpperCase() }}</div>
@@ -52,15 +44,6 @@ import { UserProfile } from '../../models/transaction.model';
     <p class="loading" *ngIf="!profile">Cargando perfil...</p>
   `,
   styles: [`
-    .navbar { display: flex; justify-content: space-between; align-items: center;
-      padding: 1rem 2rem; background: #16161a; border-bottom: 1px solid #2a2a35; }
-    .logo { color: #ff6b00; font-size: 1.3rem; font-weight: 700; text-decoration: none; }
-    .nav-right { display: flex; align-items: center; gap: 1rem; }
-    .balance { color: #ffd700; font-weight: 600; }
-    .nav-link { color: #888; text-decoration: none; transition: color 0.2s; }
-    .nav-link:hover { color: #ff6b00; }
-    .logout-btn { background: transparent; border: 1px solid #ff4444; color: #ff4444;
-      padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
     .content { padding: 2rem; max-width: 900px; margin: 0 auto; }
     .loading { text-align: center; color: #888; padding: 3rem; }
     .profile-card { display: flex; align-items: center; gap: 1.5rem;

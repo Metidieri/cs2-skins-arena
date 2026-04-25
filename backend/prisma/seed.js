@@ -51,6 +51,7 @@ async function buildTransactionsForUser(userId) {
 
 async function main() {
   console.log('[seed] limpiando datos previos...');
+  await prisma.battle.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.userSkin.deleteMany();
   await prisma.skin.deleteMany();
@@ -96,18 +97,18 @@ async function main() {
 
   console.log(`[seed] skins creados: ${skins.length} (Steam: ${steamHits}, placeholder: ${placeholderHits})`);
 
-  await prisma.userSkin.createMany({
-    data: [
-      { userId: user1.id, skinId: skins[0].id },
-      { userId: user1.id, skinId: skins[3].id },
-      { userId: user1.id, skinId: skins[5].id },
-      { userId: user1.id, skinId: skins[7].id },
-      { userId: user2.id, skinId: skins[1].id },
-      { userId: user2.id, skinId: skins[2].id },
-      { userId: user2.id, skinId: skins[4].id },
-      { userId: user2.id, skinId: skins[10].id },
-    ],
-  });
+  // Cada usuario recibe al menos 3 skins distintas (aquí 5 para variedad)
+  const inventoryAssignments = [
+    { user: user1, skinIndexes: [0, 3, 5, 7, 8] },
+    { user: user2, skinIndexes: [1, 2, 4, 9, 10] },
+  ];
+
+  for (const { user, skinIndexes } of inventoryAssignments) {
+    await prisma.userSkin.createMany({
+      data: skinIndexes.map((i) => ({ userId: user.id, skinId: skins[i].id })),
+    });
+    console.log(`[seed] inventario asignado a ${user.username}: ${skinIndexes.length} skins`);
+  }
 
   const txs = [
     ...(await buildTransactionsForUser(user1.id)),

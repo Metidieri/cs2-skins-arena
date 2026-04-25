@@ -8,12 +8,16 @@ const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
 const skinsRoutes = require('./routes/skins');
 const usersRoutes = require('./routes/users');
+const battlesRoutes = require('./routes/battles');
+const battleController = require('./controllers/battleController');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: 'http://localhost:4200', methods: ['GET', 'POST'] },
 });
+
+battleController.setIo(io);
 
 app.use(cors({ origin: 'http://localhost:4200' }));
 app.use(express.json());
@@ -22,6 +26,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/skins', skinsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/battles', battlesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -32,8 +37,20 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
+  socket.on('join-lobby', () => {
+    socket.join('lobby');
+  });
+
+  socket.on('leave-lobby', () => {
+    socket.leave('lobby');
+  });
+
   socket.on('join-battle', (battleId) => {
     socket.join(`battle-${battleId}`);
+  });
+
+  socket.on('leave-battle', (battleId) => {
+    socket.leave(`battle-${battleId}`);
   });
 
   socket.on('disconnect', () => {
