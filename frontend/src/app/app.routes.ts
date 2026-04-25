@@ -12,5 +12,6 @@ export const routes: Routes = [
   { path: 'coinflip', loadComponent: () => import('./pages/coinflip/coinflip-lobby/coinflip-lobby.component').then(m => m.CoinflipLobbyComponent), canActivate: [authGuard] },
   { path: 'coinflip/:id', loadComponent: () => import('./pages/coinflip/coinflip-battle/coinflip-battle.component').then(m => m.CoinflipBattleComponent), canActivate: [authGuard] },
   { path: 'jackpot', loadComponent: () => import('./pages/jackpot/jackpot.component').then(m => m.JackpotComponent), canActivate: [authGuard] },
+  { path: 'marketplace', loadComponent: () => import('./pages/marketplace/marketplace.component').then(m => m.MarketplaceComponent), canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];

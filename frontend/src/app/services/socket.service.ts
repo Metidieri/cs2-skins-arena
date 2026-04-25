@@ -9,6 +9,7 @@ import {
   JackpotResolvedEvent,
   JackpotTimerEvent,
 } from '../models/jackpot.model';
+import { Listing } from '../models/market.model';
 
 @Injectable({ providedIn: 'root' })
 export class SocketService implements OnDestroy {
@@ -121,6 +122,44 @@ export class SocketService implements OnDestroy {
       this.socket.on('jackpot:timer', handler);
       return () => {
         this.socket.off('jackpot:timer', handler);
+      };
+    });
+  }
+
+  joinMarketplace(): void {
+    this.socket.emit('join-marketplace');
+  }
+
+  leaveMarketplace(): void {
+    this.socket.emit('leave-marketplace');
+  }
+
+  onMarketListed(): Observable<Listing> {
+    return new Observable<Listing>((subscriber) => {
+      const handler = (payload: Listing) => subscriber.next(payload);
+      this.socket.on('market:listed', handler);
+      return () => {
+        this.socket.off('market:listed', handler);
+      };
+    });
+  }
+
+  onMarketSold(): Observable<Listing> {
+    return new Observable<Listing>((subscriber) => {
+      const handler = (payload: Listing) => subscriber.next(payload);
+      this.socket.on('market:sold', handler);
+      return () => {
+        this.socket.off('market:sold', handler);
+      };
+    });
+  }
+
+  onMarketCancelled(): Observable<Listing> {
+    return new Observable<Listing>((subscriber) => {
+      const handler = (payload: Listing) => subscriber.next(payload);
+      this.socket.on('market:cancelled', handler);
+      return () => {
+        this.socket.off('market:cancelled', handler);
       };
     });
   }

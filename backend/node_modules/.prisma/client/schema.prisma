@@ -17,12 +17,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  inventory      UserSkin[]
-  betsA          Battle[]       @relation("playerA")
-  betsB          Battle[]       @relation("playerB")
-  transactions   Transaction[]
-  jackpots       Jackpot[]
-  jackpotEntries JackpotEntry[]
+  inventory        UserSkin[]
+  betsA            Battle[]       @relation("playerA")
+  betsB            Battle[]       @relation("playerB")
+  transactions     Transaction[]
+  jackpots         Jackpot[]
+  jackpotEntries   JackpotEntry[]
+  listingsAsSeller Listing[]      @relation("Seller")
+  listingsAsBuyer  Listing[]      @relation("Buyer")
 }
 
 model Transaction {
@@ -49,6 +51,7 @@ model Skin {
 
   owners         UserSkin[]
   jackpotEntries JackpotEntry[]
+  listings       Listing[]
 }
 
 model UserSkin {
@@ -105,4 +108,22 @@ model JackpotEntry {
   skin    Skin    @relation(fields: [skinId], references: [id])
 
   @@index([jackpotId])
+}
+
+model Listing {
+  id        String    @id @default(uuid())
+  sellerId  Int
+  skinId    Int
+  price     Float
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  soldAt    DateTime?
+  buyerId   Int?
+
+  seller User  @relation("Seller", fields: [sellerId], references: [id])
+  buyer  User? @relation("Buyer", fields: [buyerId], references: [id])
+  skin   Skin  @relation(fields: [skinId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([sellerId])
 }
