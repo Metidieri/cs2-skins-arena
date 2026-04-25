@@ -52,6 +52,8 @@ async function buildTransactionsForUser(userId) {
 async function main() {
   console.log('[seed] limpiando datos previos...');
   await prisma.battle.deleteMany();
+  await prisma.jackpotEntry.deleteMany();
+  await prisma.jackpot.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.userSkin.deleteMany();
   await prisma.skin.deleteMany();
@@ -117,6 +119,48 @@ async function main() {
   await prisma.transaction.createMany({ data: txs });
 
   console.log(`[seed] transacciones creadas: ${txs.length} (10 por usuario)`);
+
+  // Jackpot histórico de ejemplo (completado, 3 entries)
+  // Usamos skins distintas a las del inventario actual para no perturbar el estado
+  const jackpotSkinIdxs = [2, 6, 9]; // Hyper Beast, Redline, Glock-18 Fade
+  const jackpotEntriesData = [
+    { user: user1, skinIdx: jackpotSkinIdxs[0] },
+    { user: user2, skinIdx: jackpotSkinIdxs[1] },
+    { user: user1, skinIdx: jackpotSkinIdxs[2] },
+  ];
+  const totalValue = jackpotEntriesData.reduce(
+    (sum, e) => sum + skins[e.skinIdx].price,
+    0,
+  );
+  const winner = user2; // gana Player1
+  const resolvedAt = new Date(Date.now() - 1000 * 60 * 60 * 6);
+
+  const historicalJackpot = await prisma.jackpot.create({
+    data: {
+      status: 'completed',
+      seed: '7f3e9b21-a1c4-4a9b-9c80-22d7e6f81234',
+      winnerId: winner.id,
+      totalValue,
+      resolvedAt,
+      createdAt: new Date(resolvedAt.getTime() - 1000 * 60 * 2),
+    },
+  });
+  for (const e of jackpotEntriesData) {
+    await prisma.jackpotEntry.create({
+      data: {
+        jackpotId: historicalJackpot.id,
+        userId: e.user.id,
+        skinId: skins[e.skinIdx].id,
+        value: skins[e.skinIdx].price,
+        createdAt: new Date(historicalJackpot.createdAt.getTime() + Math.random() * 60_000),
+      },
+    });
+  }
+
+  // Jackpot abierto inicial vacío para la UI
+  await prisma.jackpot.create({ data: { status: 'open' } });
+
+  console.log(`[seed] jackpot histórico creado (${jackpotEntriesData.length} entries, ganador ${winner.username}) + 1 jackpot abierto vacío`);
   console.log('[seed] completado');
 }
 

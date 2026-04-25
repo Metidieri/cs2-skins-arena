@@ -10,6 +10,8 @@ const skinsRoutes = require('./routes/skins');
 const usersRoutes = require('./routes/users');
 const battlesRoutes = require('./routes/battles');
 const battleController = require('./controllers/battleController');
+const jackpotRoutes = require('./routes/jackpot');
+const jackpotController = require('./controllers/jackpotController');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +20,7 @@ const io = new Server(server, {
 });
 
 battleController.setIo(io);
+jackpotController.setIo(io);
 
 app.use(cors({ origin: 'http://localhost:4200' }));
 app.use(express.json());
@@ -27,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/skins', skinsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/battles', battlesRoutes);
+app.use('/api/jackpot', jackpotRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -51,6 +55,14 @@ io.on('connection', (socket) => {
 
   socket.on('leave-battle', (battleId) => {
     socket.leave(`battle-${battleId}`);
+  });
+
+  socket.on('join-jackpot', () => {
+    socket.join('jackpot');
+  });
+
+  socket.on('leave-jackpot', () => {
+    socket.leave('jackpot');
   });
 
   socket.on('disconnect', () => {

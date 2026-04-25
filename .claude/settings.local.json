@@ -15,7 +15,12 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('socket.io-client:', p.dependencies['socket.io-client'] || 'missing'\\); console.log\\('lucide-angular:', p.dependencies['lucide-angular'] || 'missing'\\);\")",
       "Bash(node -e \"require\\('./src/controllers/battleController'\\); require\\('./src/routes/battles'\\); console.log\\('battle modules load OK'\\);\")",
       "Bash(echo \"exit=$?\")",
-      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\); console.log\\('total:',a.length,'ids:',a.map\\(s=>s.id\\).join\\(','\\)\\);}\\)\")"
+      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\); console.log\\('total:',a.length,'ids:',a.map\\(s=>s.id\\).join\\(','\\)\\);}\\)\")",
+      "Bash(node -e \"require\\('./src/controllers/jackpotController'\\); require\\('./src/routes/jackpot'\\); console.log\\('jackpot modules load OK'\\);\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\);console.log\\('count:',a.length\\);for\\(const j of a\\){console.log\\('-',j.id.substring\\(0,8\\),'winner:',j.winner?.username,'total:',j.totalValue,'entries:',j.entries.length\\);}}\\);\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\);console.log\\(a.map\\(s=>s.id+':'+s.name\\).join\\(', '\\)\\);}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('id:',j.id.substring\\(0,8\\),'status:',j.status,'totalValue:',j.totalValue,'entries:',j.entries.length\\);}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\);for\\(const t of a\\){console.log\\(t.type,t.amount,t.description\\);}}\\)\")"
     ]
   }
 }
