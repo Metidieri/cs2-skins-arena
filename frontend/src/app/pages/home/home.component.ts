@@ -40,7 +40,7 @@ export class HomeComponent implements OnInit {
     this.skinsService.getAll().subscribe((skins) => (this.skins = skins));
   }
 
-  select(skin: Skin) {
-    console.log('skin selected', skin);
+  select(_skin: Skin) {
+    // Marketplace de showcase: el click no hace nada por ahora.
   }
 }

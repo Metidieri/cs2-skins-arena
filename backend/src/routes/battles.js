@@ -6,11 +6,12 @@ const {
   getBattleById,
 } = require('../controllers/battleController');
 const authMiddleware = require('../middleware/auth');
+const { validators } = require('../middleware/validate');
 
 const router = Router();
 
-router.post('/', authMiddleware, createBattle);
-router.post('/:id/join', authMiddleware, joinBattle);
+router.post('/', authMiddleware, validators.createBattle, createBattle);
+router.post('/:id/join', authMiddleware, validators.joinBattle, joinBattle);
 router.get('/', getBattles);
 router.get('/:id', getBattleById);
 

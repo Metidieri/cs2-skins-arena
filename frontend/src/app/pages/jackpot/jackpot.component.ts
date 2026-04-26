@@ -12,6 +12,7 @@ import {
 } from '../../models/jackpot.model';
 import { Skin } from '../../models/skin.model';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
+import { ToastService } from '../../shared/services/toast.service';
 
 const PLAYER_PALETTE = [
   '#ff6b00', '#6366f1', '#10b981', '#ec4899', '#facc15',
@@ -581,6 +582,7 @@ export class JackpotComponent implements OnInit, OnDestroy {
     private jackpotSvc: JackpotService,
     private socket: SocketService,
     private skinsSvc: SkinsService,
+    private toastSvc: ToastService,
   ) {}
 
   ngOnInit() {
@@ -716,6 +718,8 @@ export class JackpotComponent implements OnInit, OnDestroy {
   showToast(type: 'error' | 'info', message: string) {
     this.toast.set({ type, message });
     setTimeout(() => this.toast.set(null), 3000);
+    if (type === 'error') this.toastSvc.error(message);
+    else this.toastSvc.info(message);
   }
 
   trackByUserId(_: number, p: ParticipantStat) {

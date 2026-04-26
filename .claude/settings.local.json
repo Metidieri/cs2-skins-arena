@@ -23,7 +23,17 @@
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\);for\\(const t of a\\){console.log\\(t.type,t.amount,t.description\\);}}\\)\")",
       "Bash(node -e \"require\\('./src/controllers/marketController'\\); require\\('./src/routes/market'\\); console.log\\('market modules load OK'\\);\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d\\);console.log\\('player inv ids:',a.map\\(s=>s.id\\).join\\(','\\)\\);}\\)\")",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{for\\(const t of JSON.parse\\(d\\)\\)console.log\\(t.type,t.amount,t.description\\);}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{for\\(const t of JSON.parse\\(d\\)\\)console.log\\(t.type,t.amount,t.description\\);}\\)\")",
+      "Bash(node -e \"require\\('./src/controllers/leaderboardController'\\); require\\('./src/routes/leaderboard'\\); require\\('./src/controllers/usersController'\\); console.log\\('modules load OK'\\);\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('type:',r.type\\);for\\(const it of r.results\\){console.log\\('#'+it.rank,it.user.username,'stat:',it.stat,'games:',it.gamesPlayed,'wr:',it.winRate\\);}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('type:',r.type,'count:',r.results.length\\);for\\(const it of r.results\\){console.log\\('#'+it.rank,it.user.username,'stat:',it.stat,'%'\\);}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('type:',r.type\\);for\\(const it of r.results\\){console.log\\('#'+it.rank,it.user.username,'stat:',it.stat,'games'\\);}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('user:',r.user?.username,'\\(no email:',r.user?.email===undefined,'\\)'\\);console.log\\('stats:',JSON.stringify\\(r.stats,null,2\\)\\);console.log\\('recentBattles:',r.recentBattles?.length\\);}\\)\")",
+      "Bash(npm test *)",
+      "Bash(timeout 120 npx jest --runInBand)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(timeout 90 npx jest --runInBand --forceExit)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\(JSON.stringify\\(JSON.parse\\(d\\),null,2\\)\\)\\)\")"
     ]
   }
 }

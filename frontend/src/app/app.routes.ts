@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
+import { guestGuard } from './guards/guest.guard';
 
 export const routes: Routes = [
-  { path: 'login', loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
-  { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
-  { path: '', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent), canActivate: [authGuard] },
+  { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
+  { path: 'login', loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent), canActivate: [guestGuard] },
+  { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent), canActivate: [guestGuard] },
+  { path: 'home', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent), canActivate: [authGuard] },
   { path: 'inventory', loadComponent: () => import('./pages/inventory/inventory.component').then(m => m.InventoryComponent), canActivate: [authGuard] },
   { path: 'profile', loadComponent: () => import('./pages/profile/profile.component').then(m => m.ProfileComponent), canActivate: [authGuard] },
   { path: 'stats', loadComponent: () => import('./pages/stats/stats.component').then(m => m.StatsComponent), canActivate: [authGuard] },
@@ -13,5 +15,7 @@ export const routes: Routes = [
   { path: 'coinflip/:id', loadComponent: () => import('./pages/coinflip/coinflip-battle/coinflip-battle.component').then(m => m.CoinflipBattleComponent), canActivate: [authGuard] },
   { path: 'jackpot', loadComponent: () => import('./pages/jackpot/jackpot.component').then(m => m.JackpotComponent), canActivate: [authGuard] },
   { path: 'marketplace', loadComponent: () => import('./pages/marketplace/marketplace.component').then(m => m.MarketplaceComponent), canActivate: [authGuard] },
-  { path: '**', redirectTo: '' },
+  { path: 'leaderboard', loadComponent: () => import('./pages/leaderboard/leaderboard.component').then(m => m.LeaderboardComponent) },
+  { path: 'player/:username', loadComponent: () => import('./pages/public-profile/public-profile.component').then(m => m.PublicProfileComponent) },
+  { path: '**', loadComponent: () => import('./pages/not-found/not-found.component').then(m => m.NotFoundComponent) },
 ];

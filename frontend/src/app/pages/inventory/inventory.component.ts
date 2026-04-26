@@ -42,7 +42,7 @@ export class InventoryComponent implements OnInit {
     this.skinsService.getInventory().subscribe((skins) => (this.skins = skins));
   }
 
-  select(skin: Skin) {
-    console.log('inventory skin selected', skin);
+  select(_skin: Skin) {
+    // Acción de selección por implementar (apostar / vender desde el inventario).
   }
 }

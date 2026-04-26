@@ -9,6 +9,7 @@ import { SkinsService } from '../../services/skins.service';
 import { Listing, MarketFilters } from '../../models/market.model';
 import { Skin } from '../../models/skin.model';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
+import { ToastService } from '../../shared/services/toast.service';
 
 const RARITIES = [
   'Consumer', 'Industrial', 'Mil-Spec',
@@ -608,6 +609,7 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
     private market: MarketService,
     private socket: SocketService,
     private skins: SkinsService,
+    private toastSvc: ToastService,
   ) {}
 
   ngOnInit() {
@@ -793,6 +795,8 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
   showToast(type: 'success' | 'error', message: string) {
     this.toast.set({ type, message });
     setTimeout(() => this.toast.set(null), 3200);
+    if (type === 'error') this.toastSvc.error(message);
+    else this.toastSvc.success(message);
   }
 
   private matchesFilters(l: Listing): boolean {

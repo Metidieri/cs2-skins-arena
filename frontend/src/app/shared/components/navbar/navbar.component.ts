@@ -9,23 +9,27 @@ import { AuthService } from '../../../services/auth.service';
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
     <nav class="navbar">
-      <a routerLink="/" class="logo">MTDR</a>
+      <a routerLink="/home" class="logo">MTDR</a>
 
       <div class="nav-links">
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">Home</a>
+        <a routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link">Home</a>
         <a routerLink="/coinflip" routerLinkActive="active" class="nav-link">Coinflip</a>
         <a routerLink="/jackpot" routerLinkActive="active" class="nav-link">Jackpot</a>
         <a routerLink="/marketplace" routerLinkActive="active" class="nav-link">Marketplace</a>
         <a routerLink="/inventory" routerLinkActive="active" class="nav-link">Inventario</a>
         <a routerLink="/stats" routerLinkActive="active" class="nav-link">Stats</a>
         <a routerLink="/history" routerLinkActive="active" class="nav-link">Historial</a>
+        <a routerLink="/leaderboard" routerLinkActive="active" class="nav-link">Ranking</a>
       </div>
 
       <div class="nav-right" *ngIf="auth.isLoggedIn(); else loggedOut">
         <span class="balance">{{ auth.user()?.balance | number:'1.0-0' }} coins</span>
-        <a routerLink="/profile" class="user">
+        <a routerLink="/profile" class="user" title="Mi perfil privado">
           <span class="avatar">{{ initial() }}</span>
-          <span class="username">{{ auth.user()?.username }}</span>
+        </a>
+        <a [routerLink]="['/player', auth.user()?.username]" class="username-link"
+           title="Ver mi perfil público">
+          {{ auth.user()?.username }}
         </a>
         <button class="logout-btn" (click)="auth.logout()">Salir</button>
       </div>
@@ -68,6 +72,11 @@ import { AuthService } from '../../../services/auth.service';
       font-weight: 700;
     }
     .username { font-weight: 600; }
+    .username-link {
+      color: #e0e0e0; font-weight: 600; text-decoration: none;
+      transition: color 0.15s;
+    }
+    .username-link:hover { color: #ff6b00; }
     .logout-btn {
       background: transparent; border: 1px solid #ff4444; color: #ff4444;
       padding: 0.4rem 0.85rem; border-radius: 6px; cursor: pointer;

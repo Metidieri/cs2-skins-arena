@@ -6,6 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 import { BattleService } from '../../../services/battle.service';
 import { SocketService } from '../../../services/socket.service';
 import { SkinsService } from '../../../services/skins.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { Battle } from '../../../models/battle.model';
 import { Skin } from '../../../models/skin.model';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
@@ -413,6 +414,7 @@ export class CoinflipLobbyComponent implements OnInit, OnDestroy {
     private socket: SocketService,
     private skins: SkinsService,
     private router: Router,
+    private toastSvc: ToastService,
   ) {}
 
   ngOnInit() {
@@ -555,5 +557,7 @@ export class CoinflipLobbyComponent implements OnInit, OnDestroy {
   showToast(type: 'error' | 'success', message: string) {
     this.toast.set({ type, message });
     setTimeout(() => this.toast.set(null), 3500);
+    if (type === 'error') this.toastSvc.error(message);
+    else this.toastSvc.success(message);
   }
 }

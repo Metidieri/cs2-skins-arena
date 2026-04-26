@@ -48,4 +48,17 @@ export class AuthService {
   getToken(): string | null {
     return localStorage.getItem('token');
   }
+
+  updateBalance(balance: number): void {
+    const current = this.currentUser();
+    if (!current) return;
+    const next = { ...current, balance };
+    this.currentUser.set(next);
+    localStorage.setItem('user', JSON.stringify(next));
+  }
+
+  setUser(user: User): void {
+    this.currentUser.set(user);
+    localStorage.setItem('user', JSON.stringify(user));
+  }
 }

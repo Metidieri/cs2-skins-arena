@@ -3,10 +3,19 @@
   "version": "1.0.0",
   "description": "Backend for CS2 Skins Arena",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "test": "jest --runInBand"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 15000,
+    "setupFiles": ["<rootDir>/tests/jest.setup.js"]
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -17,11 +26,15 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.4.1",
+    "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.2",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
     "nodemon": "^3.1.0",
-    "prisma": "^5.14.0"
+    "prisma": "^5.14.0",
+    "supertest": "^7.2.2"
   }
 }

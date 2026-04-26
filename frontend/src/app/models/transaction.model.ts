@@ -9,6 +9,17 @@ export interface Transaction {
   createdAt: string;
 }
 
+export interface BiggestWin {
+  amount: number;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface FavoriteWeapon {
+  weapon: string;
+  count: number;
+}
+
 export interface UserStats {
   wins: number;
   losses: number;
@@ -20,6 +31,16 @@ export interface UserStats {
   netProfit: number;
   inventoryCount: number;
   inventoryValue: number;
+  coinflipsPlayed?: number;
+  coinflipsWon?: number;
+  coinflipsLost?: number;
+  jackpotsPlayed?: number;
+  jackpotsWon?: number;
+  marketplaceSales?: number;
+  marketplacePurchases?: number;
+  totalEarnings?: number;
+  biggestWin?: BiggestWin | null;
+  favoriteWeapon?: FavoriteWeapon | null;
 }
 
 export interface StatsResponse {
