@@ -1,218 +1,348 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { UsersService } from '../../services/users.service';
 import { StatsResponse, UserProfile } from '../../models/transaction.model';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
+import { ToastService } from '../../shared/services/toast.service';
+
+const PRESETS = [100, 500, 1000, 5000];
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <app-navbar></app-navbar>
-    <main class="content" *ngIf="profile">
-      <section class="profile-card">
-        <div class="avatar">{{ profile.username.charAt(0).toUpperCase() }}</div>
-        <div class="info">
-          <h2>{{ profile.username }}</h2>
-          <p class="email">{{ profile.email }}</p>
-          <p class="since">Miembro desde {{ profile.createdAt | date:'longDate' }}</p>
-        </div>
-      </section>
-
-      <section class="meta-grid">
-        <div class="meta">
-          <span class="label">Saldo</span>
-          <span class="value gold">{{ auth.user()?.balance | number:'1.0-2' }} coins</span>
-        </div>
-        <div class="meta">
-          <span class="label">Skins en inventario</span>
-          <span class="value">{{ profile.inventoryCount }}</span>
-        </div>
-        <div class="meta">
-          <span class="label">ID</span>
-          <span class="value">#{{ profile.id }}</span>
-        </div>
-      </section>
-
-      <section class="card deposit-card">
-        <h3 class="section-h">Depósito de coins</h3>
-        <p class="hint">Recarga tu saldo entre 100 y 10000 coins.</p>
-        <div class="deposit-row">
-          <input
-            type="number"
-            class="amount"
-            [(ngModel)]="depositAmount"
-            min="100"
-            max="10000"
-            placeholder="Cantidad" />
-          <div class="presets">
-            <button class="preset" *ngFor="let p of presets" (click)="depositAmount = p">
-              +{{ p | number:'1.0-0' }}
-            </button>
+    <main class="page" *ngIf="profile">
+      <!-- HEADER -->
+      <header class="profile-header card">
+        <div class="header-main">
+          <div class="avatar">{{ initial() }}</div>
+          <div class="header-info">
+            <h1 class="username">{{ profile.username }}</h1>
+            <span class="badge-level">NIVEL {{ level() }}</span>
+            <p class="email">{{ profile.email }}</p>
+            <p class="since">Miembro desde {{ profile.createdAt | date:'longDate' }}</p>
           </div>
+        </div>
+
+        <div class="xp-row">
+          <div class="xp-label">
+            <span>{{ xpInLevel() }} / {{ xpForLevel() }} XP</span>
+            <span>{{ xpRemaining() }} para nivel {{ level() + 1 }}</span>
+          </div>
+          <div class="xp-bar">
+            <div class="xp-fill" [style.width.%]="xpProgress()"></div>
+          </div>
+        </div>
+
+        <div class="quick-stats">
+          <div class="qs">
+            <span class="qs-label">Saldo</span>
+            <span class="qs-value gold">{{ auth.user()?.balance | number:'1.0-0' }}</span>
+          </div>
+          <div class="qs">
+            <span class="qs-label">Skins</span>
+            <span class="qs-value">{{ profile.inventoryCount }}</span>
+          </div>
+          <div class="qs">
+            <span class="qs-label">ID</span>
+            <span class="qs-value">#{{ profile.id }}</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- SECCIÓN DEPÓSITO -->
+      <section #depositSection class="card deposit-card" id="deposit">
+        <header class="section-header">
+          <span class="section-title">Añadir coins</span>
+          <span class="section-meta">Saldo actual: <strong>{{ auth.user()?.balance | number:'1.0-0' }}</strong></span>
+        </header>
+
+        <div class="deposit-presets">
           <button
-            class="cta"
-            [disabled]="!validDeposit() || depositing()"
-            (click)="doDeposit()">
-            {{ depositing() ? 'Depositando...' : 'DEPOSITAR' }}
+            *ngFor="let p of presets"
+            class="preset"
+            [class.active]="depositAmount === p"
+            (click)="setPreset(p)">
+            +{{ p | number:'1.0-0' }}
           </button>
         </div>
+
+        <div class="deposit-row">
+          <label class="deposit-input">
+            <span>Cantidad personalizada</span>
+            <input
+              type="number"
+              [(ngModel)]="depositAmount"
+              min="100"
+              max="10000"
+              placeholder="100 - 10000" />
+          </label>
+          <button class="btn btn-primary deposit-btn"
+                  [disabled]="!validDeposit() || depositing()"
+                  (click)="doDeposit()">
+            <span *ngIf="depositing()" class="spinner"></span>
+            <span>{{ depositing() ? 'Depositando...' : 'DEPOSITAR' }}</span>
+          </button>
+        </div>
+
+        <p class="disclaimer">
+          Depósito simulado entre 100 y 10000 coins por operación. No se acepta dinero real.
+        </p>
       </section>
 
-      <section class="card stats-card" *ngIf="stats() as s">
-        <h3 class="section-h">Estadísticas extendidas</h3>
-        <div class="stats-grid">
-          <div class="kpi">
-            <span class="k-label">Coinflips</span>
-            <span class="k-value">{{ s.coinflipsPlayed || 0 }}</span>
-            <span class="k-meta">
-              <span class="win">{{ s.coinflipsWon || 0 }}W</span>
-              ·
-              <span class="loss">{{ s.coinflipsLost || 0 }}L</span>
+      <!-- STATS EXTENDIDAS -->
+      <section *ngIf="stats() as s" class="ext-section">
+        <header class="section-header">
+          <span class="section-title">Métricas extendidas</span>
+        </header>
+
+        <div class="ext-grid">
+          <article class="card metric">
+            <span class="metric-label">Coinflips</span>
+            <span class="metric-value">{{ s.coinflipsPlayed || 0 }}</span>
+            <span class="metric-meta">
+              <span class="dot win"></span>{{ s.coinflipsWon || 0 }}W
+              <span class="sep">·</span>
+              <span class="dot loss"></span>{{ s.coinflipsLost || 0 }}L
             </span>
-          </div>
-          <div class="kpi">
-            <span class="k-label">Jackpots</span>
-            <span class="k-value">{{ s.jackpotsPlayed || 0 }}</span>
-            <span class="k-meta">
-              <span class="win">{{ s.jackpotsWon || 0 }}W</span>
+          </article>
+
+          <article class="card metric">
+            <span class="metric-label">Jackpots</span>
+            <span class="metric-value">{{ s.jackpotsPlayed || 0 }}</span>
+            <span class="metric-meta">
+              <span class="dot win"></span>{{ s.jackpotsWon || 0 }} ganados
             </span>
-          </div>
-          <div class="kpi">
-            <span class="k-label">Marketplace</span>
-            <span class="k-value">{{ (s.marketplaceSales || 0) + (s.marketplacePurchases || 0) }}</span>
-            <span class="k-meta">
-              <span class="win">{{ s.marketplaceSales || 0 }} ventas</span>
-              ·
-              <span class="loss">{{ s.marketplacePurchases || 0 }} compras</span>
+          </article>
+
+          <article class="card metric">
+            <span class="metric-label">Marketplace</span>
+            <span class="metric-value">{{ (s.marketplaceSales || 0) + (s.marketplacePurchases || 0) }}</span>
+            <span class="metric-meta">
+              {{ s.marketplaceSales || 0 }} ventas <span class="sep">·</span> {{ s.marketplacePurchases || 0 }} compras
             </span>
-          </div>
-          <div class="kpi">
-            <span class="k-label">Ganancias totales</span>
-            <span class="k-value gold">{{ s.totalEarnings || 0 | number:'1.0-2' }}</span>
-            <span class="k-meta">coins</span>
-          </div>
-          <div class="kpi big" *ngIf="s.biggestWin">
-            <span class="k-label">Mayor ganancia individual</span>
-            <span class="k-value gold">+{{ s.biggestWin.amount | number:'1.0-2' }}</span>
-            <span class="k-meta">{{ s.biggestWin.description || '—' }}</span>
-          </div>
-          <div class="kpi" *ngIf="s.favoriteWeapon">
-            <span class="k-label">Arma favorita</span>
-            <span class="k-value">{{ s.favoriteWeapon.weapon }}</span>
-            <span class="k-meta">{{ s.favoriteWeapon.count }} en inventario</span>
-          </div>
+          </article>
+
+          <article class="card metric">
+            <span class="metric-label">Ganancias</span>
+            <span class="metric-value gold">{{ s.totalEarnings || 0 | number:'1.0-0' }}</span>
+            <span class="metric-meta">coins acumulados</span>
+          </article>
+
+          <article *ngIf="s.favoriteWeapon" class="card metric">
+            <span class="metric-label">Arma favorita</span>
+            <span class="metric-value">{{ s.favoriteWeapon.weapon }}</span>
+            <span class="metric-meta">{{ s.favoriteWeapon.count }} en inventario</span>
+          </article>
+
+          <article *ngIf="s.biggestWin" class="card metric biggest">
+            <span class="metric-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 4h10v5a5 5 0 01-10 0V4z"></path>
+                <path d="M8 21h8M12 17v4"></path>
+              </svg>
+              Mayor victoria
+            </span>
+            <span class="metric-value gold">+{{ s.biggestWin.amount | number:'1.0-0' }}</span>
+            <span class="metric-meta">{{ s.biggestWin.description || '—' }}</span>
+          </article>
         </div>
       </section>
 
-      <div class="actions">
-        <a routerLink="/stats" class="action-btn">Ver estadísticas completas</a>
-        <a routerLink="/history" class="action-btn">Ver historial</a>
-        <a routerLink="/inventory" class="action-btn">Ver inventario</a>
-      </div>
+      <!-- ATAJOS -->
+      <section class="actions">
+        <a routerLink="/stats" class="btn btn-ghost">Ver estadísticas</a>
+        <a routerLink="/history" class="btn btn-ghost">Ver historial</a>
+        <a routerLink="/inventory" class="btn btn-ghost">Ver inventario</a>
+      </section>
     </main>
 
-    <p class="loading" *ngIf="!profile">Cargando perfil...</p>
-
-    <div *ngIf="toast()" class="toast" [class.error]="toast()?.type === 'error'" [class.success]="toast()?.type === 'success'">
-      {{ toast()?.message }}
-    </div>
+    <p class="loading-state" *ngIf="!profile">Cargando perfil...</p>
   `,
   styles: [`
-    .content { padding: 2rem; max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.4rem; }
-    .loading { text-align: center; color: #888; padding: 3rem; }
-    .profile-card { display: flex; align-items: center; gap: 1.5rem;
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 12px;
-      padding: 2rem; }
-    .avatar { width: 90px; height: 90px; border-radius: 50%;
-      background: linear-gradient(135deg, #ff6b00, #ff3d00);
+    .page { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.4rem; }
+
+    /* Header */
+    .profile-header { display: flex; flex-direction: column; gap: 1rem; }
+    .header-main { display: flex; align-items: center; gap: 1.4rem; }
+    .avatar {
+      width: 80px; height: 80px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--accent), #ff3d00);
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 32px;
       display: flex; align-items: center; justify-content: center;
-      color: white; font-size: 2.5rem; font-weight: 700; }
-    .info h2 { color: #e0e0e0; margin: 0 0 0.4rem 0; }
-    .email { color: #888; margin: 0.2rem 0; }
-    .since { color: #666; font-size: 0.85rem; margin: 0.2rem 0; }
-
-    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-    .meta {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 10px;
-      padding: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem;
+      box-shadow: 0 8px 22px rgba(255,107,0,0.35);
+      flex-shrink: 0;
     }
-    .label { color: #888; font-size: 0.85rem; }
-    .value { color: #e0e0e0; font-size: 1.3rem; font-weight: 600; }
-    .value.gold { color: #ffd700; }
-
-    .card {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 12px;
-      padding: 1.4rem 1.6rem;
+    .header-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .username {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 28px;
+      color: var(--text-primary); margin: 0; line-height: 1;
     }
-    .section-h { color: #e0e0e0; margin: 0; font-size: 1.05rem; letter-spacing: 0.08em; text-transform: uppercase; }
-    .hint { color: #888; font-size: 0.85rem; margin: 0.4rem 0 0.9rem; }
+    .badge-level {
+      align-self: flex-start;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+      color: var(--gold);
+      background: var(--gold-muted);
+      border: 1px solid var(--gold);
+      margin: 4px 0;
+    }
+    .email { color: var(--text-secondary); margin: 2px 0; font-size: 13px; }
+    .since { color: var(--text-muted); margin: 0; font-size: 12px; }
+
+    /* XP bar */
+    .xp-row { display: flex; flex-direction: column; gap: 6px; }
+    .xp-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .xp-bar {
+      height: 8px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .xp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      transition: width 0.6s ease;
+    }
+
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+    .qs {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .qs-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .qs-value {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 22px;
+      color: var(--text-primary); line-height: 1;
+    }
+    .qs-value.gold { color: var(--gold); }
 
     /* Deposit */
-    .deposit-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
-    .amount {
-      flex: 1; min-width: 160px;
-      background: #0a0a0f; border: 1px solid #2a2a35; color: #e0e0e0;
-      padding: 0.7rem 1rem; border-radius: 8px; font-size: 1rem;
+    .deposit-card { display: flex; flex-direction: column; gap: 1rem; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+    .section-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 18px;
+      color: var(--text-primary);
     }
-    .amount:focus { outline: none; border-color: #ff6b00; }
-    .presets { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .section-meta { color: var(--text-muted); font-size: 12px; }
+    .section-meta strong { color: var(--gold); font-family: 'Rajdhani', sans-serif; }
+
+    .deposit-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; }
     .preset {
-      background: #0a0a0f; border: 1px solid #2a2a35; color: #aaa;
-      padding: 0.5rem 0.8rem; border-radius: 8px; cursor: pointer;
-      font-size: 0.85rem; font-weight: 600;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 13px;
+      transition: var(--transition);
     }
-    .preset:hover { color: #ff6b00; border-color: #ff6b00; }
-    .cta {
-      background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff;
-      border: none; padding: 0.75rem 1.4rem; border-radius: 8px;
-      font-weight: 800; letter-spacing: 0.08em; cursor: pointer;
-      box-shadow: 0 4px 18px rgba(255,107,0,0.3);
-      transition: transform 0.15s;
+    .preset:hover { color: var(--text-primary); border-color: var(--border-strong); }
+    .preset.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-muted);
     }
-    .cta:hover:not(:disabled) { transform: translateY(-2px); }
-    .cta:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-    /* Stats grid */
-    .stats-grid {
-      display: grid; gap: 0.85rem; margin-top: 0.9rem;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    .deposit-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.6rem;
+      align-items: end;
     }
-    .kpi {
-      background: #0a0a0f; border: 1px solid #2a2a35; border-radius: 10px;
-      padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.25rem;
+    @media (max-width: 640px) { .deposit-row { grid-template-columns: 1fr; } }
+    .deposit-input { display: flex; flex-direction: column; gap: 0.3rem; }
+    .deposit-input span { color: var(--text-muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+    .deposit-input input {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      padding: 0.7rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
     }
-    .kpi.big { grid-column: span 2; }
-    .k-label { color: #666; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; }
-    .k-value { color: #e0e0e0; font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
-    .k-value.gold { color: #ffd700; }
-    .k-meta { color: #888; font-size: 0.8rem; }
-    .win { color: #4caf50; font-weight: 700; }
-    .loss { color: #eb4b4b; font-weight: 700; }
+    .deposit-input input:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
+    }
+    .deposit-btn {
+      padding: 0.75rem 1.4rem;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px; letter-spacing: 0.08em;
+    }
+    .spinner {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .disclaimer { color: var(--text-muted); font-size: 11px; margin: 0; }
 
-    .actions { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .action-btn {
-      background: #ff6b00; color: white; padding: 0.7rem 1.4rem;
-      border-radius: 8px; text-decoration: none; font-weight: 600;
-      transition: background 0.2s;
+    /* Métricas extendidas */
+    .ext-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
     }
-    .action-btn:hover { background: #ff8f00; }
+    .metric {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 1rem 1.2rem;
+    }
+    .metric-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-muted); font-weight: 600;
+    }
+    .metric-label svg { width: 14px; height: 14px; color: var(--gold); }
+    .metric-value {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 28px;
+      color: var(--text-primary); line-height: 1;
+    }
+    .metric-value.gold { color: var(--gold); }
+    .metric-meta { color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot.win { background: var(--green); }
+    .dot.loss { background: var(--red); }
+    .sep { color: var(--text-muted); }
 
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-      padding: 0.85rem 1.4rem; border-radius: 10px;
-      font-weight: 600; z-index: 200;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      animation: toastUp 0.25s ease-out;
+    .metric.biggest {
+      grid-column: span 2;
+      background: linear-gradient(135deg, var(--bg-surface), color-mix(in srgb, var(--gold) 12%, var(--bg-surface)));
+      border-color: color-mix(in srgb, var(--gold) 30%, var(--border-default));
     }
-    .toast.error { background: #2b1414; color: #ff6b6b; border: 1px solid #ff4444; }
-    .toast.success { background: #14241c; color: #6bff8f; border: 1px solid #4caf50; }
-    @keyframes toastUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    @media (max-width: 720px) { .metric.biggest { grid-column: span 1; } }
+    .metric.biggest .metric-value { font-size: 36px; }
+
+    /* Actions */
+    .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .btn-ghost { color: var(--text-secondary); }
+
+    .loading-state { color: var(--text-muted); text-align: center; padding: 3rem; }
   `],
 })
 export class ProfileComponent implements OnInit {
@@ -220,15 +350,47 @@ export class ProfileComponent implements OnInit {
   stats = signal<StatsResponse['stats'] | null>(null);
   depositAmount = 500;
   depositing = signal(false);
-  presets = [100, 500, 1000, 5000];
-  toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
+  presets = PRESETS;
 
-  constructor(public auth: AuthService, private users: UsersService) {}
+  @ViewChild('depositSection') depositSection?: ElementRef<HTMLElement>;
+
+  level = computed(() => {
+    const s = this.stats();
+    const games = (s?.wins || 0) + (s?.losses || 0);
+    return Math.max(1, Math.floor(games / 5) + 1);
+  });
+  xpForLevel = computed(() => 5);
+  xpInLevel = computed(() => {
+    const s = this.stats();
+    const games = (s?.wins || 0) + (s?.losses || 0);
+    return games % 5;
+  });
+  xpRemaining = computed(() => Math.max(0, this.xpForLevel() - this.xpInLevel()));
+  xpProgress = computed(() => (this.xpInLevel() / this.xpForLevel()) * 100);
+
+  constructor(
+    public auth: AuthService,
+    private users: UsersService,
+    private route: ActivatedRoute,
+    private toast: ToastService,
+  ) {}
 
   ngOnInit() {
     this.users.getProfile().subscribe((p) => (this.profile = p));
     this.users.getStats().subscribe((res) => this.stats.set(res.stats));
+
+    if (this.route.snapshot.fragment === 'deposit') {
+      setTimeout(() => {
+        this.depositSection?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   }
+
+  initial(): string {
+    return (this.profile?.username?.charAt(0) || '?').toUpperCase();
+  }
+
+  setPreset(p: number) { this.depositAmount = p; }
 
   validDeposit() {
     return this.depositAmount >= 100 && this.depositAmount <= 10000;
@@ -243,17 +405,12 @@ export class ProfileComponent implements OnInit {
         this.depositing.set(false);
         if (this.profile) this.profile = { ...this.profile, balance: res.balance };
         this.users.getStats().subscribe((s) => this.stats.set(s.stats));
-        this.showToast('success', `Saldo actualizado: ${res.balance.toLocaleString()} coins`);
+        this.toast.success(`Saldo actualizado: ${res.balance.toLocaleString()} coins`);
       },
       error: (err) => {
         this.depositing.set(false);
-        this.showToast('error', err?.error?.error || 'Error al depositar');
+        this.toast.error(err?.error?.error || 'Error al depositar');
       },
     });
-  }
-
-  showToast(type: 'success' | 'error', message: string) {
-    this.toast.set({ type, message });
-    setTimeout(() => this.toast.set(null), 3500);
   }
 }

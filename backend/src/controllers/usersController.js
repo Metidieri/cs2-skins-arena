@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { calculateLevel } = require('../utils/levelSystem');
 
 async function getProfile(req, res) {
   try {
@@ -11,14 +12,57 @@ async function getProfile(req, res) {
         balance: true,
         avatar: true,
         createdAt: true,
+        level: true,
+        experience: true,
       },
     });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const inventoryCount = await prisma.userSkin.count({ where: { userId: user.id } });
-    res.json({ ...user, inventoryCount });
+    res.json({
+      ...user,
+      inventoryCount,
+      levelData: calculateLevel(user.experience || 0),
+    });
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener perfil' });
+  }
+}
+
+async function getLevel(req, res) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { level: true, experience: true, totalLost: true },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // xpHistory: aproximación basada en las últimas LOSS transactions del usuario,
+    // que son las que generan XP. amount es negativo, así que invertimos y aplicamos
+    // la misma fórmula que el servicio.
+    const recentLosses = await prisma.transaction.findMany({
+      where: { userId: req.userId, type: 'LOSS' },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+    const xpHistory = recentLosses.map((t) => ({
+      id: t.id,
+      coinsLost: Number(Math.abs(t.amount).toFixed(2)),
+      xpGained: Math.floor(Math.abs(t.amount) * 0.1),
+      description: t.description,
+      createdAt: t.createdAt,
+    }));
+
+    res.json({
+      level: user.level,
+      experience: user.experience,
+      totalLost: user.totalLost,
+      levelData: calculateLevel(user.experience || 0),
+      xpHistory,
+    });
+  } catch (err) {
+    console.error('[getLevel]', err);
+    res.status(500).json({ error: 'Error al obtener nivel' });
   }
 }
 
@@ -177,4 +221,4 @@ async function deposit(req, res) {
   }
 }
 
-module.exports = { getProfile, getStats, getTransactions, deposit };
+module.exports = { getProfile, getStats, getTransactions, deposit, getLevel };

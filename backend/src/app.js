@@ -9,6 +9,10 @@ const jackpotRoutes = require('./routes/jackpot');
 const marketRoutes = require('./routes/market');
 const leaderboardRoutes = require('./routes/leaderboard');
 const statsRoutes = require('./routes/stats');
+const boxRoutes = require('./routes/boxes');
+const chatRoutes = require('./routes/chat');
+const rouletteRoutes = require('./routes/roulette');
+const casesRoutes = require('./routes/cases');
 
 const { generalLimiter, marketLimiter } = require('./middleware/rateLimit');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -50,6 +54,10 @@ function createApp() {
   app.use('/api/market', marketLimiter, marketRoutes);
   app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/stats', statsRoutes);
+  app.use('/api/boxes', boxRoutes);
+  app.use('/api/chat', chatRoutes);
+  app.use('/api/roulette', rouletteRoutes);
+  app.use('/api/cases', casesRoutes);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

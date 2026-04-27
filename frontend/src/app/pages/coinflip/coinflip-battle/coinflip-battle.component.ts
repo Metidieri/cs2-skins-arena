@@ -6,9 +6,9 @@ import { AuthService } from '../../../services/auth.service';
 import { BattleService } from '../../../services/battle.service';
 import { SocketService } from '../../../services/socket.service';
 import { Battle, BattleResolvedEvent, BattleSkin, BattlePlayer } from '../../../models/battle.model';
-import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
 type DisplayState = 'loading' | 'waiting' | 'flipping' | 'completed';
+type BotState = 'idle' | 'calling' | 'done';
 
 const RARITY_COLORS: Record<string, string> = {
   consumer: '#b0c3d9', industrial: '#5e98d9',
@@ -20,10 +20,8 @@ const RARITY_COLORS: Record<string, string> = {
 @Component({
   selector: 'app-coinflip-battle',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, RouterLink],
   template: `
-    <app-navbar></app-navbar>
-
     <main class="page">
       <div class="back-row">
         <a routerLink="/coinflip" class="back">← Volver al lobby</a>
@@ -43,6 +41,18 @@ const RARITY_COLORS: Record<string, string> = {
             <p>Esperando rival...</p>
             <button class="copy-link" (click)="copyLink()">
               {{ linkCopied() ? '✓ ENLACE COPIADO' : '📋 COPIAR ENLACE' }}
+            </button>
+            <button class="call-bot-btn" (click)="callBot()"
+              [disabled]="botState() !== 'idle'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                <circle cx="12" cy="16" r="1"></circle>
+                <line x1="8" y1="16" x2="8" y2="16"></line>
+                <line x1="16" y1="16" x2="16" y2="16"></line>
+              </svg>
+              {{ botState() === 'calling' ? 'LLAMANDO BOT...' : 'LLAMAR BOT' }}
             </button>
           </div>
 
@@ -173,6 +183,18 @@ const RARITY_COLORS: Record<string, string> = {
       transition: background 0.2s, color 0.2s;
     }
     .copy-link:hover { background: #ff6b00; color: #fff; }
+
+    .call-bot-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: transparent; border: 1.5px solid var(--rarity-milspec, #4b69ff);
+      color: var(--rarity-milspec, #4b69ff);
+      padding: 0.65rem 1.3rem; border-radius: 8px; font-weight: 700;
+      letter-spacing: 0.06em; cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      margin-top: 0.5rem;
+    }
+    .call-bot-btn:hover:not(:disabled) { background: var(--rarity-milspec, #4b69ff); color: #fff; }
+    .call-bot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Coin flip */
     .coin-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
@@ -334,6 +356,7 @@ export class CoinflipBattleComponent implements OnInit, OnDestroy {
   toast = signal<{ type: 'win' | 'lose'; message: string } | null>(null);
   linkCopied = signal(false);
   seedCopied = signal(false);
+  botState = signal<BotState>('idle');
 
   private subs: Subscription[] = [];
   private resolveTimer?: any;
@@ -489,5 +512,20 @@ export class CoinflipBattleComponent implements OnInit, OnDestroy {
 
   goLobby() {
     this.router.navigate(['/coinflip']);
+  }
+
+  callBot() {
+    if (this.botState() !== 'idle') return;
+    this.botState.set('calling');
+    this.battleService.callBot(this.battleId).subscribe({
+      next: () => {
+        this.botState.set('done');
+      },
+      error: () => {
+        this.botState.set('idle');
+        this.toast.set({ type: 'lose', message: 'No hay bots disponibles ahora mismo' });
+        setTimeout(() => this.toast.set(null), 3000);
+      },
+    });
   }
 }

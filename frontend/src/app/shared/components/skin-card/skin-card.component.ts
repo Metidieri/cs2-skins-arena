@@ -2,15 +2,15 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Skin } from '../../../models/skin.model';
 
-const RARITY_COLORS: Record<string, string> = {
-  consumer: '#b0c3d9',
-  industrial: '#5e98d9',
-  milspec: '#4b69ff',
-  'mil-spec': '#4b69ff',
-  restricted: '#8847ff',
-  classified: '#d32ce6',
-  covert: '#eb4b4b',
-  contraband: '#e4ae39',
+const RARITY_VARS: Record<string, string> = {
+  consumer: '--rarity-consumer',
+  industrial: '--rarity-industrial',
+  milspec: '--rarity-milspec',
+  'mil-spec': '--rarity-milspec',
+  restricted: '--rarity-restricted',
+  classified: '--rarity-classified',
+  covert: '--rarity-covert',
+  contraband: '--rarity-contraband',
 };
 
 @Component({
@@ -20,11 +20,12 @@ const RARITY_COLORS: Record<string, string> = {
   template: `
     <div
       class="skin-card"
-      [style.border-color]="rarityColor()"
+      [class.selected]="selected"
+      [style.--rarity]="rarityVar()"
       (click)="select()"
       tabindex="0"
       (keydown.enter)="select()">
-      <div class="skin-img" [style.box-shadow]="'inset 0 -3px 0 ' + rarityColor()">
+      <div class="skin-img">
         <img
           *ngIf="skin.imageUrl && !imgFailed"
           [src]="skin.imageUrl"
@@ -34,59 +35,175 @@ const RARITY_COLORS: Record<string, string> = {
           {{ skin.weapon || '?' }}
         </span>
       </div>
-      <h3 class="name">{{ skin.name }}</h3>
-      <p class="weapon">{{ skin.weapon }}</p>
-      <p class="price">{{ skin.price | number:'1.0-0' }} coins</p>
-      <span class="rarity-badge"
-            [style.color]="rarityColor()"
-            [style.background]="rarityBg()">
-        {{ skin.rarity }}
-      </span>
+
+      <div class="skin-info">
+        <h3 class="name">{{ skin.name }}</h3>
+        <p class="weapon">{{ skin.weapon }}</p>
+        <div class="meta-row">
+          <span class="price">{{ skin.price | number:'1.0-0' }} <small>coins</small></span>
+          <span class="rarity-badge">{{ rarityShort() }}</span>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
+    :host { display: block; }
+
     .skin-card {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 10px;
-      padding: 1.2rem; text-align: center;
-      transition: transform 0.2s, box-shadow 0.2s;
-      cursor: pointer; outline: none;
+      --rarity: var(--text-muted);
+      position: relative;
+      aspect-ratio: 1 / 1.2;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      outline: none;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
     }
-    .skin-card:hover, .skin-card:focus {
+    .skin-card::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--rarity);
+    }
+    .skin-card:hover, .skin-card:focus-visible {
       transform: translateY(-4px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      border-color: rgba(255,107,0,0.4);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--rarity) 22%, transparent);
     }
+    .skin-card.selected {
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), var(--accent-glow);
+      transform: scale(1.02);
+    }
+
+    /* Imagen 60% del alto */
     .skin-img {
-      background: #0a0a0f; border-radius: 8px; padding: 0.5rem;
-      margin-bottom: 0.8rem; min-height: 120px;
-      display: flex; align-items: center; justify-content: center;
-      color: #555; font-size: 0.9rem;
+      flex: 0 0 60%;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--rarity) 8%, transparent) 0%,
+        transparent 75%
+      );
     }
-    .skin-img img { max-width: 100%; max-height: 110px; object-fit: contain; }
-    .fallback { padding: 1.5rem; font-weight: 600; }
-    .name { color: #e0e0e0; font-size: 1rem; margin: 0 0 0.3rem; }
-    .weapon { color: #888; font-size: 0.85rem; margin: 0; }
-    .price { color: #ffd700; font-weight: 600; margin: 0.5rem 0; }
+    .skin-img img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .skin-img .fallback {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      opacity: 0.3;
+      text-align: center;
+    }
+
+    /* Info 40% restante */
+    .skin-info {
+      flex: 1;
+      padding: 8px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 0;
+    }
+    .name {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .weapon {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.2;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .meta-row {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .price {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .price small {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
     .rarity-badge {
-      display: inline-block; padding: 0.22rem 0.7rem; border-radius: 4px;
-      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
+      color: var(--rarity);
+      background: color-mix(in srgb, var(--rarity) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--rarity) 35%, transparent);
     }
   `],
 })
 export class SkinCardComponent {
   @Input() skin!: Skin;
+  @Input() selected = false;
   @Output() onSelect = new EventEmitter<Skin>();
 
   imgFailed = false;
 
-  rarityColor(): string {
-    const key = (this.skin?.rarity || '').toLowerCase().replace(/\s+/g, '');
-    return RARITY_COLORS[key] || '#888';
+  rarityKey(): string {
+    return (this.skin?.rarity || '').toLowerCase().replace(/\s+/g, '');
   }
 
-  rarityBg(): string {
-    const c = this.rarityColor();
-    return c + '33';
+  rarityVar(): string {
+    const key = this.rarityKey();
+    const cssVar = RARITY_VARS[key];
+    return cssVar ? `var(${cssVar})` : 'var(--text-muted)';
+  }
+
+  rarityShort(): string {
+    const r = this.skin?.rarity || '';
+    if (r.length <= 4) return r.toUpperCase();
+    // Abreviaciones tipo CS2: Mil-Spec → MS, Restricted → RES, Classified → CLS, Covert → COV...
+    const map: Record<string, string> = {
+      consumer: 'CONS',
+      industrial: 'IND',
+      'mil-spec': 'MS',
+      milspec: 'MS',
+      restricted: 'RES',
+      classified: 'CLS',
+      covert: 'COV',
+      contraband: 'CONT',
+    };
+    return map[r.toLowerCase().replace(/\s+/g, '')] || r.slice(0, 4).toUpperCase();
   }
 
   onImgError() {

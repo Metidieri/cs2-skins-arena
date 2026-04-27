@@ -33,7 +33,14 @@
       "Bash(timeout 120 npx jest --runInBand)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(timeout 90 npx jest --runInBand --forceExit)",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\(JSON.stringify\\(JSON.parse\\(d\\),null,2\\)\\)\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\(JSON.stringify\\(JSON.parse\\(d\\),null,2\\)\\)\\)\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@angular/core/package.json'\\); console.log\\('@angular/core resolved:', p.version\\);\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@angular/cli/package.json'\\); console.log\\('@angular/cli resolved:', p.version\\);\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/typescript/package.json'\\); console.log\\('typescript resolved:', p.version\\);\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/rxjs/package.json'\\); console.log\\('rxjs resolved:', p.version\\);\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/zone.js/package.json'\\); console.log\\('zone.js resolved:', p.version\\);\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@fontsource/inter/package.json'\\); console.log\\('inter:',p.version\\)\")",
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@fontsource/rajdhani/package.json'\\); console.log\\('rajdhani:',p.version\\)\")"
     ]
   }
 }

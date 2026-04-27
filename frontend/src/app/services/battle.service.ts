@@ -28,4 +28,8 @@ export class BattleService {
   getBattleById(id: string): Observable<Battle> {
     return this.http.get<Battle>(`${this.base}/${id}`);
   }
+
+  callBot(battleId: string): Observable<any> {
+    return this.http.post(`${this.base}/${battleId}/call-bot`, {});
+  }
 }

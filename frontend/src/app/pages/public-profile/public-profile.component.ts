@@ -7,7 +7,6 @@ import {
   PublicProfileBattle,
   PublicProfileResponse,
 } from '../../models/leaderboard.model';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 
 const RARITY_COLORS: Record<string, string> = {
   consumer: '#b0c3d9', industrial: '#5e98d9',
@@ -19,10 +18,8 @@ const RARITY_COLORS: Record<string, string> = {
 @Component({
   selector: 'app-public-profile',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, RouterLink],
   template: `
-    <app-navbar></app-navbar>
-
     <main class="page" *ngIf="profile() as p; else loadingTpl">
       <header class="card hero">
         <div class="avatar-big">{{ initial(p.user.username) }}</div>

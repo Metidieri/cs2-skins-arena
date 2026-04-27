@@ -10,6 +10,7 @@ import {
   JackpotTimerEvent,
 } from '../models/jackpot.model';
 import { Listing } from '../models/market.model';
+import { RouletteBet, RouletteResult, RouletteRound } from '../models/roulette.model';
 
 @Injectable({ providedIn: 'root' })
 export class SocketService implements OnDestroy {
@@ -22,6 +23,28 @@ export class SocketService implements OnDestroy {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+    });
+  }
+
+  identify(userId: number | string): void {
+    this.socket.emit('identify', userId);
+  }
+  unidentify(userId: number | string): void {
+    this.socket.emit('unidentify', userId);
+  }
+  onBoxOpened(): Observable<{ skin: any; coinsValue: number; isNewRecord: boolean }> {
+    return new Observable((subscriber) => {
+      const handler = (payload: any) => subscriber.next(payload);
+      this.socket.on('box:opened', handler);
+      return () => this.socket.off('box:opened', handler);
+    });
+  }
+
+  onLeveledUp(): Observable<{ level: number; xpGained: number; currentXp: number; xpNeeded: number }> {
+    return new Observable((subscriber) => {
+      const handler = (payload: any) => subscriber.next(payload);
+      this.socket.on('user:leveled-up', handler);
+      return () => this.socket.off('user:leveled-up', handler);
     });
   }
 
@@ -161,6 +184,41 @@ export class SocketService implements OnDestroy {
       return () => {
         this.socket.off('market:cancelled', handler);
       };
+    });
+  }
+
+  joinRoulette(): void { this.socket.emit('join-roulette'); }
+  leaveRoulette(): void { this.socket.emit('leave-roulette'); }
+
+  onRouletteNewRound(): Observable<RouletteRound & { consecutiveGreens: number; accumulatedJackpot: number }> {
+    return new Observable((subscriber) => {
+      const handler = (payload: any) => subscriber.next(payload);
+      this.socket.on('roulette:new_round', handler);
+      return () => this.socket.off('roulette:new_round', handler);
+    });
+  }
+
+  onRouletteTimer(): Observable<number> {
+    return new Observable<number>((subscriber) => {
+      const handler = (seconds: number) => subscriber.next(seconds);
+      this.socket.on('roulette:timer', handler);
+      return () => this.socket.off('roulette:timer', handler);
+    });
+  }
+
+  onRouletteBetPlaced(): Observable<RouletteBet> {
+    return new Observable<RouletteBet>((subscriber) => {
+      const handler = (payload: RouletteBet) => subscriber.next(payload);
+      this.socket.on('roulette:bet_placed', handler);
+      return () => this.socket.off('roulette:bet_placed', handler);
+    });
+  }
+
+  onRouletteResult(): Observable<RouletteResult> {
+    return new Observable<RouletteResult>((subscriber) => {
+      const handler = (payload: RouletteResult) => subscriber.next(payload);
+      this.socket.on('roulette:result', handler);
+      return () => this.socket.off('roulette:result', handler);
     });
   }
 

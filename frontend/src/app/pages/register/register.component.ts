@@ -10,103 +10,227 @@ import { ToastService } from '../../shared/services/toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <div class="auth-container">
-      <div class="auth-card">
-        <h1>CS2 Skins Arena</h1>
-        <h2>Crear Cuenta</h2>
-        <form (ngSubmit)="onSubmit()" novalidate>
-          <label class="field">
-            <input
-              type="text"
-              [(ngModel)]="username"
-              name="username"
-              placeholder="Username (3-20 caracteres)"
-              required
-              [attr.aria-invalid]="usernameError() ? true : null" />
-            <span class="field-error" *ngIf="usernameError()">{{ usernameError() }}</span>
-          </label>
+    <div class="auth-page">
+      <section class="form-pane">
+        <div class="form-inner">
+          <a routerLink="/" class="logo">
+            <span>CS2</span><span class="accent">ARENA</span>
+          </a>
 
-          <label class="field">
-            <input
-              type="email"
-              [(ngModel)]="email"
-              name="email"
-              placeholder="Email"
-              required
-              [attr.aria-invalid]="emailError() ? true : null" />
-            <span class="field-error" *ngIf="emailError()">{{ emailError() }}</span>
-          </label>
+          <header class="header">
+            <h1>Crea tu cuenta</h1>
+            <p>Empieza a apostar tus skins en menos de 30 segundos.</p>
+          </header>
 
-          <label class="field password-field">
-            <div class="password-wrap">
+          <form (ngSubmit)="onSubmit()" novalidate>
+            <label class="field">
+              <span class="label">Username</span>
               <input
-                [type]="showPassword() ? 'text' : 'password'"
-                [(ngModel)]="password"
-                name="password"
-                placeholder="Password (mín. 8 caracteres)"
-                required
-                [attr.aria-invalid]="passwordError() ? true : null" />
-              <button type="button" class="eye" (click)="togglePassword()"
-                      [attr.aria-label]="showPassword() ? 'Ocultar password' : 'Mostrar password'">
-                {{ showPassword() ? '🙈' : '👁' }}
-              </button>
+                type="text"
+                [(ngModel)]="username"
+                name="username"
+                placeholder="3-20 caracteres"
+                autocomplete="username"
+                [class.has-error]="usernameError()"
+                required />
+              <span class="field-error" *ngIf="usernameError()">{{ usernameError() }}</span>
+            </label>
+
+            <label class="field">
+              <span class="label">Email</span>
+              <input
+                type="email"
+                [(ngModel)]="email"
+                name="email"
+                placeholder="tu@email.com"
+                autocomplete="email"
+                [class.has-error]="emailError()"
+                required />
+              <span class="field-error" *ngIf="emailError()">{{ emailError() }}</span>
+            </label>
+
+            <label class="field">
+              <span class="label">Password</span>
+              <div class="password-wrap">
+                <input
+                  [type]="showPassword() ? 'text' : 'password'"
+                  [(ngModel)]="password"
+                  name="password"
+                  placeholder="Mínimo 8 caracteres"
+                  autocomplete="new-password"
+                  [class.has-error]="passwordError()"
+                  required />
+                <button type="button" class="eye" (click)="togglePassword()"
+                        [attr.aria-label]="showPassword() ? 'Ocultar' : 'Mostrar'">
+                  {{ showPassword() ? '🙈' : '👁' }}
+                </button>
+              </div>
+              <span class="field-error" *ngIf="passwordError()">{{ passwordError() }}</span>
+            </label>
+
+            <p class="form-error" *ngIf="formError()">{{ formError() }}</p>
+
+            <button type="submit" class="submit-btn" [disabled]="loading()">
+              <span *ngIf="loading()" class="spinner"></span>
+              <span>{{ loading() ? 'Creando...' : 'Crear cuenta' }}</span>
+            </button>
+          </form>
+
+          <p class="switch">
+            ¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a>
+          </p>
+        </div>
+      </section>
+
+      <aside class="marketing-pane">
+        <div class="bg-pattern"></div>
+        <div class="marketing-inner">
+          <div class="brand-big">
+            <span>CS2</span><span class="accent">ARENA</span>
+          </div>
+          <p class="tagline">Únete y apuesta tus primeras skins hoy mismo.</p>
+
+          <div class="mk-stats">
+            <div class="mk-stat">
+              <span class="num">3</span><span class="lbl">Modos</span>
             </div>
-            <span class="field-error" *ngIf="passwordError()">{{ passwordError() }}</span>
-          </label>
+            <div class="mk-stat">
+              <span class="num">⚡</span><span class="lbl">Tiempo real</span>
+            </div>
+            <div class="mk-stat">
+              <span class="num">∞</span><span class="lbl">Skins en juego</span>
+            </div>
+          </div>
 
-          <p class="error" *ngIf="formError()">{{ formError() }}</p>
-
-          <button type="submit" class="submit" [disabled]="loading()">
-            <span *ngIf="loading()" class="spinner"></span>
-            {{ loading() ? 'Creando...' : 'Crear Cuenta' }}
-          </button>
-        </form>
-        <p class="link">¿Ya tienes cuenta? <a routerLink="/login">Inicia Sesión</a></p>
-      </div>
+          <blockquote>
+            <p>"Coinflip, jackpot y marketplace. Todo en un sitio."</p>
+            <footer>— Lo que ofrece el lobby</footer>
+          </blockquote>
+        </div>
+      </aside>
     </div>
   `,
   styles: [`
-    .auth-container {
-      display: flex; justify-content: center; align-items: center;
-      min-height: 100vh; background: #0a0a0f;
+    :host { display: block; }
+    .auth-page {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg-base);
+      overflow: auto;
     }
-    .auth-card {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 12px;
-      padding: 2.5rem; width: 100%; max-width: 400px;
+    @media (max-width: 880px) {
+      .auth-page { grid-template-columns: 1fr; }
+      .marketing-pane { display: none; }
     }
-    h1 { color: #ff6b00; text-align: center; font-size: 1.5rem; margin-bottom: 0.5rem; letter-spacing: 0.1em; }
-    h2 { color: #e0e0e0; text-align: center; font-size: 1.1rem; margin-bottom: 1.5rem; font-weight: 400; }
 
-    .field { display: block; margin-bottom: 0.85rem; }
-    input {
-      width: 100%; padding: 0.75rem; background: #0a0a0f;
-      border: 1px solid #2a2a35; border-radius: 8px; color: #e0e0e0;
-      font-size: 0.95rem; box-sizing: border-box;
+    .form-pane {
+      background: var(--bg-surface);
+      padding: 3rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    input:focus { outline: none; border-color: #ff6b00; }
-    input[aria-invalid="true"] { border-color: #ff4444; }
-    .field-error { color: #ff6b6b; font-size: 0.78rem; margin-top: 0.3rem; display: block; }
+    .form-inner {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+    .logo {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      align-self: flex-start;
+      text-decoration: none;
+    }
+    .logo .accent { color: var(--accent); margin-left: 4px; }
+
+    .header h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .header p { color: var(--text-secondary); margin: 6px 0 0; font-size: 14px; }
+
+    form { display: flex; flex-direction: column; gap: 1rem; }
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    input {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input::placeholder { color: var(--text-muted); }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
+    }
+    input.has-error { border-color: var(--red); }
+    input.has-error:focus { box-shadow: 0 0 0 3px var(--red-muted); }
+    .field-error { color: var(--red); font-size: 12px; }
+    .form-error {
+      color: var(--red);
+      background: var(--red-muted);
+      border: 1px solid rgba(248,113,113,0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.8rem;
+      font-size: 13px;
+      margin: 0;
+    }
 
     .password-wrap { position: relative; }
     .password-wrap input { padding-right: 44px; }
     .eye {
-      position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
-      background: transparent; border: none; cursor: pointer; padding: 0.4rem;
-      color: #aaa; font-size: 1.05rem; line-height: 1;
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 1.05rem; padding: 0.4rem;
     }
-    .eye:hover { color: #ff6b00; }
+    .eye:hover { color: var(--accent); }
 
-    .submit {
-      width: 100%; padding: 0.85rem;
-      background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff;
-      border: none; border-radius: 8px; font-size: 1rem; cursor: pointer;
-      font-weight: 700; letter-spacing: 0.04em;
-      transition: transform 0.15s, box-shadow 0.15s;
-      box-shadow: 0 4px 18px rgba(255,107,0,0.3);
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    .submit-btn {
+      height: 44px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
-    .submit:hover:not(:disabled) { transform: translateY(-2px); }
-    .submit:disabled { opacity: 0.65; cursor: not-allowed; box-shadow: none; transform: none; }
+    .submit-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: var(--accent-glow);
+    }
+    .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
     .spinner {
       width: 14px; height: 14px; border-radius: 50%;
@@ -115,10 +239,76 @@ import { ToastService } from '../../shared/services/toast.service';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .error { color: #ff6b6b; font-size: 0.85rem; margin: 0.4rem 0; }
-    .link { text-align: center; color: #888; margin-top: 1rem; }
-    .link a { color: #ff6b00; text-decoration: none; }
-    .link a:hover { text-decoration: underline; }
+    .switch { color: var(--text-muted); font-size: 13px; text-align: center; }
+    .switch a { color: var(--accent); font-weight: 600; }
+    .switch a:hover { text-decoration: underline; }
+
+    .marketing-pane {
+      position: relative;
+      background: radial-gradient(
+        ellipse at center,
+        rgba(255,107,0,0.05) 0%,
+        var(--bg-base) 70%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      overflow: hidden;
+    }
+    .bg-pattern {
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 22px 22px;
+      mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+      pointer-events: none;
+    }
+    .marketing-inner { position: relative; max-width: 420px; display: flex; flex-direction: column; gap: 1.6rem; }
+    .brand-big {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 56px;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .brand-big .accent { color: var(--accent); margin-left: 8px; }
+    .tagline { color: var(--text-secondary); font-size: 16px; margin: 0; }
+
+    .mk-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+    .mk-stat {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 0.6rem;
+      text-align: center;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .mk-stat .num {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--accent);
+    }
+    .mk-stat .lbl {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 0.6rem 1rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+    blockquote p { margin: 0; font-style: italic; }
+    blockquote footer {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
   `],
 })
 export class RegisterComponent {
@@ -134,28 +324,22 @@ export class RegisterComponent {
 
   constructor(private auth: AuthService, private router: Router, private toast: ToastService) {}
 
-  togglePassword() {
-    this.showPassword.update((v) => !v);
-  }
+  togglePassword() { this.showPassword.update((v) => !v); }
 
   validate(): boolean {
     let ok = true;
     if (!this.username || this.username.length < 3 || this.username.length > 20) {
-      this.usernameError.set('Username 3-20 caracteres');
-      ok = false;
+      this.usernameError.set('Username 3-20 caracteres'); ok = false;
     } else if (!/^[a-zA-Z0-9_]+$/.test(this.username)) {
-      this.usernameError.set('Solo alfanumérico y _');
-      ok = false;
+      this.usernameError.set('Solo alfanumérico y _'); ok = false;
     } else this.usernameError.set('');
 
     if (!this.email || !/^\S+@\S+\.\S+$/.test(this.email)) {
-      this.emailError.set('Email inválido');
-      ok = false;
+      this.emailError.set('Email inválido'); ok = false;
     } else this.emailError.set('');
 
     if (!this.password || this.password.length < 8) {
-      this.passwordError.set('Password mínimo 8 caracteres');
-      ok = false;
+      this.passwordError.set('Password mínimo 8 caracteres'); ok = false;
     } else this.passwordError.set('');
 
     return ok;

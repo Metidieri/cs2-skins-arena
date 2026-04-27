@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { getSkinImage } = require('../src/services/steamSkins');
+const { ensureBotsExist, BOT_USERNAMES } = require('../src/services/botService');
 
 const prisma = new PrismaClient();
 
@@ -161,6 +162,24 @@ async function main() {
   await prisma.jackpot.create({ data: { status: 'open' } });
 
   console.log(`[seed] jackpot histórico creado (${jackpotEntriesData.length} entries, ganador ${winner.username}) + 1 jackpot abierto vacío`);
+  // Bots: create if missing and assign 3 skins each
+  await ensureBotsExist(prisma);
+  const bots = await prisma.user.findMany({ where: { isBot: true } });
+  const botSkinPool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // all skin indexes
+  for (const bot of bots) {
+    // Pick 3 random skins from the pool
+    const shuffled = [...botSkinPool].sort(() => Math.random() - 0.5);
+    const chosen = shuffled.slice(0, 3);
+    for (const idx of chosen) {
+      await prisma.userSkin.upsert({
+        where: { userId_skinId: { userId: bot.id, skinId: skins[idx].id } },
+        create: { userId: bot.id, skinId: skins[idx].id },
+        update: {},
+      });
+    }
+  }
+  console.log(`[seed] bots configurados: ${bots.length} bots con 3 skins cada uno`);
+
   console.log('[seed] completado');
 }
 

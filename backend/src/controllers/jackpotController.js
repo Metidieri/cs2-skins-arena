@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../config/db');
+const { addExperience } = require('../services/levelService');
 
 const RESOLVE_DELAY_MS = 30 * 1000;
 
@@ -244,6 +245,15 @@ async function resolveJackpot(jackpot) {
         description: `Jackpot perdido vs ${winnerUser.username}`,
       },
     });
+    const levelUpdate = await addExperience(userId, lost);
+    if (io && levelUpdate?.leveledUp) {
+      io.to(`user-${userId}`).emit('user:leveled-up', {
+        level: levelUpdate.level,
+        xpGained: levelUpdate.xpGained,
+        currentXp: levelUpdate.currentXp,
+        xpNeeded: levelUpdate.xpNeeded,
+      });
+    }
   }
 
   const finalJackpot = await loadJackpotFull(jackpot.id);

@@ -16,20 +16,58 @@ Plataforma estilo casino de skins de Counter-Strike 2 con coinflip 1v1, jackpot 
 
 ---
 
+## ✨ Novedades
+
+### Sistema de niveles y experiencia ⭐ NUEVO
+Cada vez que pierdes coins en un coinflip o un jackpot ganas XP (`0.1 XP por coin perdido`). La curva es exponencial: `100 * 1.5^(level-1)` XP por nivel.
+
+- **5 tiers visuales**: Novato (1-5), Competidor (6-15), Veterano (16-30), Elite (31-50), Leyenda (51+).
+- **Badge de nivel** persistente en el sidebar con barra de progreso y color del tier.
+- **Toast dorado** "¡Subiste al nivel X! 🎉" en tiempo real cuando subes de nivel (vía socket privado por usuario).
+- Endpoint `GET /api/users/level` con `levelData` calculado y `xpHistory` (últimas 5 ganancias).
+
+### Rediseño visual completo 🎨 NUEVO
+La UI pasó del estilo gaming dark básico a un **diseño tipo CSGOGem premium**:
+
+- **Sidebar lateral fijo de 240px** sustituye la navbar horizontal. Logo "CS2 ARENA", balance + botón depositar, level badge, navegación con iconos SVG y secciones Juegos/Cuenta, footer con avatar y logout.
+- **Sistema de design tokens** completo en `styles.scss` (CSS variables `--bg-base/surface/elevated/hover`, `--accent`, `--gold`, `--rarity-*`, `--radius-*`).
+- **Tipografía**: Rajdhani 700 para titulares + Inter 400/500/600 para cuerpo, vía `@fontsource` (sin Google Fonts CDN).
+- **Páginas rediseñadas**:
+  - `/` Landing con hero fullscreen, partículas CSS, contadores con count-up animado al entrar en viewport.
+  - `/login` y `/register` fullscreen con layout 50/50 (formulario + marketing pane con patrón de puntos).
+  - `/home` reconvertido en **Lobby**: feed de actividad reciente en tiempo real (coinflips, jackpots, ventas), preview del jackpot actual y batallas activas.
+  - `/coinflip` con cards horizontales premium y modales con `backdrop-filter: blur(8px)`.
+  - `/jackpot` con **donut SVG segmentado** por jugador (cada slice es un `<circle>` con `stroke-dasharray` calculado) y sidebar sticky para apostar.
+  - `/marketplace` con cards que muestran botón COMPRAR en hover-overlay, badge "TUYO" dorado y filtros sticky.
+  - `/stats` con KPI grid 2x2 + barra winrate animada.
+  - `/history` con timeline vertical conectado.
+  - `/leaderboard` con podio top 3 escalonado (corona SVG dorada en el #1) y animación entrada.
+  - `/profile` con header completo, badge de nivel, barra XP, depósito con presets pill y card especial "Mayor victoria".
+- **Toasts globales** con stack apilado en esquina inferior derecha y auto-dismiss 4s.
+- **Loading bar** estilo NProgress en el top de la página, ligada al HTTP interceptor.
+- **Página 404** con diseño propio.
+- **Guest guard**: si ya estás logueado y entras a `/login` o `/register`, te redirige al lobby.
+
+---
+
 ## 📸 Capturas de las páginas principales
 
-> Nota: las capturas se actualizarán tras el deploy. Todas las páginas usan tema gaming dark con acento naranja `#ff6b00` y dorado `#ffd700`.
+> Nota: las capturas se actualizarán tras el deploy. Tema gaming dark con acento naranja `#ff6b00` y dorado `#e8b84b` sobre fondo `#0d0d12`.
 
 | Página | Descripción |
 |--------|-------------|
-| `/` (Landing) | Hero "ARENA", 3 cards de modos, stats globales en vivo |
-| `/coinflip` | Lobby de batallas en tiempo real |
+| `/` (Landing) | Hero "ARENA" gigante, 3 cards de modos, 4 contadores con count-up |
+| `/home` (Lobby) | Feed de actividad en tiempo real + preview jackpot + batallas activas |
+| `/coinflip` | Lobby con cards horizontales, modales blur |
 | `/coinflip/:id` | Vista de batalla 1v1 con animación de moneda 3D |
-| `/jackpot` | Pot circular animado, ruleta de resolución |
-| `/marketplace` | Grid filtrable, modal vender, modal confirmar compra |
-| `/leaderboard` | Podio top 3 + tabla 4-10 con tabs |
+| `/jackpot` | Donut SVG por jugador, ruleta de resolución, sidebar sticky |
+| `/marketplace` | Grid responsive con hover-overlay, filtros pills coloreadas |
+| `/leaderboard` | Podio top 3 con corona + tabla 4-10 |
 | `/player/:username` | Perfil público con stats, batallas e inventario |
-| `/profile` | Perfil propio con depósitos y stats extendidas |
+| `/profile` | Perfil propio + barra XP + depósito + métricas extendidas |
+| `/inventory` | Grid de skins con filtros por rareza, arma y orden |
+| `/stats` | KPIs 2x2 + barra winrate + secciones secundarias |
+| `/history` | Timeline vertical filtrable por tipo |
 
 ---
 
@@ -61,28 +99,36 @@ Tres rankings disponibles vía tabs:
 
 Top 3 en podio con corona dorada para el #1, tabla del 4 al 10 con highlight si tú estás dentro y fila extra con tu posición real si no.
 
+### ⭐ Sistema de niveles
+- Ganas **0.1 XP por cada coin perdida** (en coinflips o jackpots).
+- Curva exponencial `100 * 1.5^(level-1)` por nivel.
+- 5 tiers (Novato → Leyenda) con colores y badges propios.
+- Toast dorado en vivo al subir de nivel.
+
 ---
 
 ## 🛠️ Stack tecnológico
 
 **Backend** (`backend/`)
 - Node.js ≥ 18 + Express 4
-- Prisma ORM sobre SQLite (`prisma/dev.db`)
-- Socket.io para tiempo real (rooms `lobby`, `battle-{id}`, `jackpot`, `marketplace`)
+- Prisma ORM 5.22 sobre SQLite (`prisma/dev.db`)
+- Socket.io 4.7 para tiempo real (rooms `lobby`, `battle-{id}`, `jackpot`, `marketplace`, `user-{id}`)
 - JWT + bcryptjs
 - express-validator + express-rate-limit
-- Jest + supertest para tests
+- Jest 30 + supertest 7
 
 **Frontend** (`frontend/`)
-- Angular 17 standalone components + signals
+- Angular 17.3 standalone components + signals
 - RxJS, FormsModule, Router
-- socket.io-client
+- socket.io-client 4.8
 - HTTP interceptor con loading bar global
-- Estilo gaming dark consistente
+- @fontsource/inter + @fontsource/rajdhani (fuentes locales, sin CDN)
+- Sistema de design tokens en `styles.scss` (CSS variables)
+- Toast service global, sidebar lateral fijo
 
 **Deploy**
-- Backend → Railway (Procfile incluido)
-- Frontend → Vercel (vercel.json con rewrites SPA)
+- Backend → Railway (`Procfile` incluido)
+- Frontend → Vercel (`vercel.json` con rewrites SPA)
 
 ---
 
@@ -174,7 +220,7 @@ Suites incluidas:
 - `tests/auth.test.js` — register/login/me happy path + casos de error.
 - `tests/battle.test.js` — validación de auth/inputs + flujo completo crear→unirse→resolver con verificación de transferencia de skins y transacciones.
 
-10 tests, ~2.5s de ejecución.
+10 tests, ~3s de ejecución.
 
 ---
 
@@ -184,33 +230,46 @@ Suites incluidas:
 cs2-skins-arena/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma         # User, Skin, UserSkin, Transaction, Battle, Jackpot, JackpotEntry, Listing
+│   │   ├── schema.prisma         # User (+ level/experience/totalLost),
+│   │   │                         # Skin, UserSkin, Transaction, Battle,
+│   │   │                         # Jackpot, JackpotEntry, Listing
 │   │   ├── migrations/
 │   │   └── seed.js
 │   ├── src/
 │   │   ├── app.js                # createApp() factory
-│   │   ├── index.js              # arranque + socket.io
-│   │   ├── controllers/          # auth, users, skins, battle, jackpot, market, leaderboard, stats
+│   │   ├── index.js              # arranque + socket.io rooms
+│   │   ├── controllers/          # auth, users, skins, battle, jackpot,
+│   │   │                         # market, leaderboard, stats
 │   │   ├── routes/
 │   │   ├── middleware/           # auth (JWT), validate, rateLimit, errorHandler
-│   │   ├── services/steamSkins.js
-│   │   └── utils/logger.js
+│   │   ├── services/
+│   │   │   ├── steamSkins.js
+│   │   │   └── levelService.js   # addExperience() — sistema de XP
+│   │   └── utils/
+│   │       ├── logger.js
+│   │       └── levelSystem.js    # XP fórmulas y tiers
 │   ├── tests/
 │   ├── .env.example
 │   ├── Procfile
 │   └── package.json
 └── frontend/
-    └── src/app/
-        ├── pages/                # landing, login, register, home, inventory, profile, public-profile,
-        │                         # stats, history, coinflip/{lobby,battle}, jackpot, marketplace,
-        │                         # leaderboard, not-found
-        ├── shared/
-        │   ├── components/       # navbar, skin-card, toast, loading-bar
-        │   └── services/         # toast.service, loading.service
-        ├── services/
-        ├── models/
-        ├── guards/
-        └── app.routes.ts
+    └── src/
+        ├── styles.scss           # design tokens (CSS vars) + utilidades
+        └── app/
+            ├── pages/            # landing, login, register, home (lobby),
+            │                     # inventory, profile, public-profile,
+            │                     # stats, history, coinflip/{lobby,battle},
+            │                     # jackpot, marketplace, leaderboard, not-found
+            ├── shared/
+            │   ├── components/   # sidebar, skin-card, level-badge,
+            │   │                 # toast, loading-bar
+            │   └── services/     # toast.service, loading.service
+            ├── services/         # auth, users, skins, battle, jackpot,
+            │                     # market, leaderboard, socket, global-stats
+            ├── models/           # user, skin, transaction, battle, jackpot,
+            │                     # market, leaderboard, global-stats
+            ├── guards/           # auth.guard, guest.guard
+            └── app.routes.ts
 ```
 
 ---
@@ -218,10 +277,11 @@ cs2-skins-arena/
 ## 📝 Notas técnicas
 
 - **IDs mixtos**: User/Skin/Battle son `Int` autoincrement (legacy). Jackpot/JackpotEntry/Listing son `String UUID`. Sus FKs siguen siendo Int para casar con las tablas existentes.
-- **Atomicidad**: todas las transferencias críticas (compra marketplace, resolve jackpot, resolve battle) están envueltas en `prisma.$transaction`.
+- **Atomicidad**: todas las transferencias críticas (compra marketplace, resolve jackpot, resolve battle, depósito, addExperience) están envueltas en `prisma.$transaction`.
 - **Rate limiting**: se desactiva por completo cuando `NODE_ENV=test` para que los tests no se vean afectados.
 - **Logger**: redacta `password / token / authorization / jwt` antes de imprimir cualquier objeto.
 - **CORS**: `FRONTEND_URL` admite varias URLs separadas por coma. Por defecto siempre acepta `localhost:4200` para conveniencia en desarrollo.
+- **Socket por usuario**: el cliente emite `identify(userId)` al login y se une a la sala `user-{id}`. El backend usa esa sala para eventos privados (ej. `user:leveled-up`).
 
 ---
 

@@ -21,7 +21,7 @@ import { LoadingService } from '../../services/loading.service';
     .loading-bar.active { opacity: 1; }
     .bar {
       height: 100%;
-      background: linear-gradient(90deg, transparent 0%, #ff6b00 30%, #ffd700 60%, transparent 100%);
+      background: linear-gradient(90deg, var(--accent), var(--gold));
       background-size: 250% 100%;
       animation: slide 1.4s linear infinite;
       box-shadow: 0 0 10px rgba(255,107,0,0.6);

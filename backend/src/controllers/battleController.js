@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 const prisma = require('../config/db');
+const { addExperience } = require('../services/levelService');
+const { getBotWithSkin } = require('../services/botService');
 
 let io = null;
 function setIo(instance) {
@@ -54,6 +56,20 @@ async function createBattle(req, res) {
   }
 }
 
+async function joinBattleInternal(battleId, userId, skinId) {
+  const userSkin = await prisma.userSkin.findUnique({
+    where: { userId_skinId: { userId, skinId } },
+  });
+  if (!userSkin) throw new Error('El jugador no posee esta skin');
+
+  const updated = await prisma.battle.update({
+    where: { id: battleId },
+    data: { playerBId: userId, skinBId: skinId, status: 'in_progress' },
+  });
+
+  return resolveBattle(updated);
+}
+
 async function joinBattle(req, res) {
   try {
     const userId = req.userId;
@@ -78,19 +94,37 @@ async function joinBattle(req, res) {
 
     const updated = await prisma.battle.update({
       where: { id: battleId },
-      data: {
-        playerBId: userId,
-        skinBId: skinId,
-        status: 'in_progress',
-      },
+      data: { playerBId: userId, skinBId: skinId, status: 'in_progress' },
     });
 
     const resolved = await resolveBattle(updated);
-
     res.json(resolved);
   } catch (err) {
     console.error('[joinBattle]', err);
     res.status(500).json({ error: 'Error al unirse a batalla' });
+  }
+}
+
+async function callBot(req, res) {
+  try {
+    const userId = req.userId;
+    const battleId = parseInt(req.params.id);
+
+    const battle = await prisma.battle.findUnique({ where: { id: battleId } });
+    if (!battle) return res.status(404).json({ error: 'Batalla no encontrada' });
+    if (battle.status !== 'waiting') return res.status(400).json({ error: 'Batalla no disponible' });
+    if (battle.playerAId !== userId) return res.status(403).json({ error: 'No eres el creador de esta batalla' });
+
+    const botData = await getBotWithSkin(prisma);
+    if (!botData) return res.status(400).json({ error: 'No hay bots disponibles con skins' });
+
+    const { bot, skin } = botData;
+    const resolved = await joinBattleInternal(battleId, bot.id, skin.id);
+
+    res.json({ ...resolved, joinedByBot: true });
+  } catch (err) {
+    console.error('[callBot]', err);
+    res.status(500).json({ error: 'Error al llamar bot' });
   }
 }
 
@@ -158,6 +192,17 @@ async function resolveBattle(battle) {
       resolvedAt: new Date(),
     },
   });
+
+  // XP por la skin perdida
+  const levelUpdate = await addExperience(loserId, loserOwnSkinValue);
+  if (io && levelUpdate?.leveledUp) {
+    io.to(`user-${loserId}`).emit('user:leveled-up', {
+      level: levelUpdate.level,
+      xpGained: levelUpdate.xpGained,
+      currentXp: levelUpdate.currentXp,
+      xpNeeded: levelUpdate.xpNeeded,
+    });
+  }
 
   const [playerA, playerB] = await Promise.all([
     prisma.user.findUnique({
@@ -242,6 +287,7 @@ async function getBattleById(req, res) {
 module.exports = {
   createBattle,
   joinBattle,
+  callBot,
   resolveBattle,
   getBattles,
   getBattleById,

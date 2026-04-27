@@ -1,6 +1,20 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
+const { calculateLevel } = require('../utils/levelSystem');
+
+function publicUserShape(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    balance: user.balance,
+    avatar: user.avatar,
+    level: user.level,
+    experience: user.experience,
+    levelData: calculateLevel(user.experience || 0),
+  };
+}
 
 async function register(req, res) {
   try {
@@ -20,10 +34,7 @@ async function register(req, res) {
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({
-      token,
-      user: { id: user.id, email: user.email, username: user.username, balance: user.balance },
-    });
+    res.status(201).json({ token, user: publicUserShape(user) });
   } catch (err) {
     res.status(500).json({ error: 'Error al registrar usuario' });
   }
@@ -45,10 +56,7 @@ async function login(req, res) {
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({
-      token,
-      user: { id: user.id, email: user.email, username: user.username, balance: user.balance },
-    });
+    res.json({ token, user: publicUserShape(user) });
   } catch (err) {
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
@@ -58,12 +66,15 @@ async function me(req, res) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
-      select: { id: true, email: true, username: true, balance: true, avatar: true, createdAt: true },
+      select: {
+        id: true, email: true, username: true, balance: true, avatar: true,
+        createdAt: true, level: true, experience: true,
+      },
     });
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-    res.json(user);
+    res.json({ ...user, levelData: calculateLevel(user.experience || 0) });
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener usuario' });
   }

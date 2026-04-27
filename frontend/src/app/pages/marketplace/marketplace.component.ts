@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -8,59 +8,46 @@ import { SocketService } from '../../services/socket.service';
 import { SkinsService } from '../../services/skins.service';
 import { Listing, MarketFilters } from '../../models/market.model';
 import { Skin } from '../../models/skin.model';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ToastService } from '../../shared/services/toast.service';
 
-const RARITIES = [
-  'Consumer', 'Industrial', 'Mil-Spec',
-  'Restricted', 'Classified', 'Covert',
-];
-const WEAPONS = [
-  'AK-47', 'M4A1-S', 'M4A4', 'AWP',
-  'Desert Eagle', 'USP-S', 'Glock-18',
-  'Karambit', 'M9 Bayonet',
-];
-const RARITY_COLORS: Record<string, string> = {
-  consumer: '#b0c3d9',
-  industrial: '#5e98d9',
-  milspec: '#4b69ff',
-  'mil-spec': '#4b69ff',
-  restricted: '#8847ff',
-  classified: '#d32ce6',
-  covert: '#eb4b4b',
-  contraband: '#e4ae39',
+const RARITIES = ['Consumer', 'Industrial', 'Mil-Spec', 'Restricted', 'Classified', 'Covert'];
+const WEAPONS = ['AK-47', 'M4A1-S', 'M4A4', 'AWP', 'Desert Eagle', 'USP-S', 'Glock-18', 'Karambit', 'M9 Bayonet'];
+const RARITY_VARS: Record<string, string> = {
+  consumer: '--rarity-consumer',
+  industrial: '--rarity-industrial',
+  milspec: '--rarity-milspec',
+  'mil-spec': '--rarity-milspec',
+  restricted: '--rarity-restricted',
+  classified: '--rarity-classified',
+  covert: '--rarity-covert',
+  contraband: '--rarity-contraband',
 };
-
-type SortBy = 'price_asc' | 'price_desc' | 'newest';
 
 @Component({
   selector: 'app-marketplace',
   standalone: true,
-  imports: [CommonModule, FormsModule, NavbarComponent],
+  imports: [CommonModule, FormsModule],
   template: `
-    <app-navbar></app-navbar>
-
     <main class="page">
-      <header class="hero">
+      <header class="page-head">
         <div>
           <h1 class="title">MARKETPLACE</h1>
-          <p class="subtitle">Compra, vende e intercambia skins.</p>
+          <p class="subtitle">Compra, vende e intercambia skins entre jugadores.</p>
         </div>
-        <button class="cta" (click)="openSellModal()">＋ VENDER SKIN</button>
+        <button class="btn btn-primary" (click)="openSellModal()">+ VENDER SKIN</button>
       </header>
 
-      <!-- FILTROS -->
-      <section class="filters">
+      <!-- FILTROS en barra horizontal -->
+      <section class="filter-bar">
         <div class="filter-row">
-          <span class="filter-label">RAREZA</span>
+          <span class="filter-label">Rareza</span>
           <div class="pills">
             <button class="pill" [class.active]="!filters.rarity" (click)="setRarity(undefined)">Todas</button>
             <button
               *ngFor="let r of rarities"
               class="pill"
               [class.active]="filters.rarity === r"
-              [style.border-color]="filters.rarity === r ? rarityColor(r) : ''"
-              [style.color]="filters.rarity === r ? rarityColor(r) : ''"
+              [style.--rarity]="rarityVar(r)"
               (click)="setRarity(r)">
               {{ r }}
             </button>
@@ -68,103 +55,111 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
         </div>
 
         <div class="filter-row split">
-          <div class="control">
-            <label>ARMA</label>
+          <label class="control">
+            <span>Arma</span>
             <select [(ngModel)]="filters.weapon" (change)="reload()">
               <option [ngValue]="undefined">Todas</option>
               <option *ngFor="let w of weapons" [ngValue]="w">{{ w }}</option>
             </select>
-          </div>
-
-          <div class="control range">
-            <label>PRECIO</label>
+          </label>
+          <label class="control range">
+            <span>Precio</span>
             <div class="range-inputs">
               <input type="number" [(ngModel)]="filters.minPrice" (change)="reload()" placeholder="Min" min="0" />
               <span>—</span>
               <input type="number" [(ngModel)]="filters.maxPrice" (change)="reload()" placeholder="Max" min="0" />
             </div>
-          </div>
-
-          <div class="control">
-            <label>ORDENAR</label>
+          </label>
+          <label class="control">
+            <span>Ordenar</span>
             <select [(ngModel)]="filters.sortBy" (change)="reload()">
               <option ngValue="newest">Más reciente</option>
               <option ngValue="price_asc">Precio menor</option>
               <option ngValue="price_desc">Precio mayor</option>
             </select>
-          </div>
-
-          <button class="ghost" (click)="clearFilters()">Limpiar</button>
+          </label>
+          <button class="btn btn-ghost" (click)="clearFilters()">Limpiar</button>
         </div>
       </section>
 
       <!-- GRID -->
       <section class="grid-wrap">
         <div *ngIf="loading()" class="grid">
-          <div *ngFor="let _ of skeletonArr" class="skeleton"></div>
+          <div *ngFor="let _ of skeletonArr" class="skeleton skeleton-card"></div>
         </div>
 
-        <div *ngIf="!loading() && listings().length === 0" class="empty">
-          <div class="empty-icon">🛒</div>
+        <div *ngIf="!loading() && listings().length === 0" class="empty-state card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l1-5h16l1 5"></path>
+            <path d="M4 9v11h16V9"></path>
+            <path d="M9 13h6"></path>
+          </svg>
           <p>No hay listings con esos filtros.</p>
-          <button class="ghost" (click)="clearFilters()">Limpiar filtros</button>
+          <button class="btn btn-ghost" (click)="clearFilters()">Limpiar filtros</button>
         </div>
 
         <div *ngIf="!loading() && listings().length > 0" class="grid">
           <article
             *ngFor="let l of listings(); trackBy: trackById"
-            class="card">
-            <div class="card-img"
-                 [style.box-shadow]="'inset 0 -3px 0 ' + rarityColor(l.skin.rarity)">
+            class="listing"
+            [class.mine]="isMine(l)"
+            [style.--rarity]="rarityVar(l.skin.rarity)">
+            <div class="listing-head">
+              <span class="listing-price">{{ l.price | number:'1.0-0' }} <small>coins</small></span>
+              <span class="rarity-badge">{{ l.skin.rarity }}</span>
+            </div>
+
+            <div class="listing-img">
               <img *ngIf="l.skin.imageUrl" [src]="l.skin.imageUrl" [alt]="l.skin.name" />
               <span *ngIf="!l.skin.imageUrl" class="fallback">?</span>
-              <span class="rarity-badge"
-                    [style.color]="rarityColor(l.skin.rarity)"
-                    [style.background]="rarityBg(l.skin.rarity)">
-                {{ l.skin.rarity }}
-              </span>
-              <span *ngIf="isMine(l)" class="mine-badge">TUYO</span>
             </div>
-            <h3 class="card-name">{{ l.skin.name }}</h3>
-            <p class="card-weapon">{{ l.skin.weapon }}</p>
-            <div class="card-seller">
-              <span class="seller-avatar">{{ initial(l.seller.username) }}</span>
-              <span class="seller-name">{{ l.seller.username }}</span>
+
+            <div class="listing-body">
+              <h3 class="listing-name">{{ l.skin.name }}</h3>
+              <p class="listing-meta">{{ l.skin.weapon }}</p>
+              <div class="listing-foot">
+                <div class="seller">
+                  <span class="seller-avatar">{{ initial(l.seller.username) }}</span>
+                  <span class="seller-name">{{ l.seller.username }}</span>
+                </div>
+                <span class="base-price">base {{ l.skin.price | number:'1.0-0' }}</span>
+              </div>
             </div>
-            <div class="card-foot">
-              <span class="card-price">◈ {{ l.price | number:'1.0-0' }}</span>
+
+            <span *ngIf="isMine(l)" class="mine-badge">TUYO</span>
+
+            <!-- Hover overlay con botón -->
+            <div class="listing-overlay">
               <button
                 *ngIf="!isMine(l)"
-                class="buy-btn"
+                class="btn btn-primary"
                 [disabled]="!canAfford(l)"
                 (click)="askBuy(l)">
-                {{ canAfford(l) ? 'COMPRAR' : 'SALDO' }}
+                {{ canAfford(l) ? 'COMPRAR' : 'SIN SALDO' }}
               </button>
               <button
                 *ngIf="isMine(l)"
-                class="cancel-btn"
-                (click)="cancel(l)">
-                CANCELAR
-              </button>
+                class="btn btn-danger"
+                (click)="cancel(l)">CANCELAR</button>
             </div>
           </article>
         </div>
 
         <div *ngIf="!loading() && totalPages() > 1" class="pagination">
-          <button class="ghost" [disabled]="page() <= 1" (click)="goPage(page() - 1)">‹ Anterior</button>
+          <button class="btn btn-ghost" [disabled]="page() <= 1" (click)="goPage(page() - 1)">‹ Anterior</button>
           <span class="page-info">Página {{ page() }} de {{ totalPages() }}</span>
-          <button class="ghost" [disabled]="page() >= totalPages()" (click)="goPage(page() + 1)">Siguiente ›</button>
+          <button class="btn btn-ghost" [disabled]="page() >= totalPages()" (click)="goPage(page() + 1)">Siguiente ›</button>
         </div>
       </section>
 
       <!-- MIS LISTINGS -->
       <section class="my-section">
-        <div class="my-head">
-          <h2 class="section-h">Mis listings</h2>
-          <button class="ghost" (click)="loadMyListings()">↻ Actualizar</button>
-        </div>
+        <header class="section-header">
+          <span class="section-title">Mis listings</span>
+          <button class="btn btn-ghost" (click)="loadMyListings()">↻ Actualizar</button>
+        </header>
         <p *ngIf="myListings().length === 0" class="empty-row">Aún no has puesto skins en venta.</p>
-        <div *ngIf="myListings().length > 0" class="my-table-wrap">
+        <div *ngIf="myListings().length > 0" class="my-table-wrap card">
           <table class="my-table">
             <thead>
               <tr>
@@ -180,9 +175,8 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
               <tr *ngFor="let l of myListings()">
                 <td>
                   <div class="row-skin">
-                    <div class="row-img">
+                    <div class="row-img" [style.--rarity]="rarityVar(l.skin.rarity)">
                       <img *ngIf="l.skin.imageUrl" [src]="l.skin.imageUrl" />
-                      <span *ngIf="!l.skin.imageUrl" class="fallback">?</span>
                     </div>
                     <div>
                       <div class="row-name">{{ l.skin.name }}</div>
@@ -190,7 +184,7 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
                     </div>
                   </div>
                 </td>
-                <td class="row-price">◈ {{ l.price | number:'1.0-0' }}</td>
+                <td class="row-price">{{ l.price | number:'1.0-0' }}</td>
                 <td>
                   <span class="status-pill" [class.active]="l.status === 'active'"
                         [class.sold]="l.status === 'sold'"
@@ -201,7 +195,7 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
                 <td class="row-date">{{ l.createdAt | date:'short' }}</td>
                 <td>{{ l.buyer?.username || '—' }}</td>
                 <td>
-                  <button *ngIf="l.status === 'active'" class="cancel-btn small" (click)="cancel(l)">CANCELAR</button>
+                  <button *ngIf="l.status === 'active'" class="btn btn-danger" (click)="cancel(l)">CANCELAR</button>
                 </td>
               </tr>
             </tbody>
@@ -215,47 +209,43 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
       <div class="modal" (click)="$event.stopPropagation()">
         <header class="modal-head">
           <h3>Vender skin</h3>
-          <button class="x" (click)="closeSellModal()">×</button>
+          <button class="modal-x" (click)="closeSellModal()">×</button>
         </header>
+        <div class="modal-body">
+          <p *ngIf="inventory().length === 0" class="empty-row">No tienes skins disponibles para vender.</p>
 
-        <p *ngIf="inventory().length === 0" class="empty-row">No tienes skins disponibles para vender.</p>
+          <div class="sell-grid" *ngIf="inventory().length > 0">
+            <button
+              *ngFor="let s of inventory()"
+              class="sell-tile"
+              [class.selected]="selectedSkin?.id === s.id"
+              (click)="selectSkin(s)">
+              <div class="sell-img">
+                <img *ngIf="s.imageUrl" [src]="s.imageUrl" />
+              </div>
+              <span class="sell-name">{{ s.name }}</span>
+              <span class="sell-price">{{ s.price | number:'1.0-0' }}</span>
+            </button>
+          </div>
 
-        <div class="inv-grid" *ngIf="inventory().length > 0">
-          <button
-            *ngFor="let s of inventory()"
-            class="inv-tile"
-            [class.selected]="selectedSkin?.id === s.id"
-            (click)="selectSkin(s)">
-            <div class="inv-img">
-              <img *ngIf="s.imageUrl" [src]="s.imageUrl" />
-              <span *ngIf="!s.imageUrl" class="fallback">?</span>
+          <div *ngIf="selectedSkin" class="sell-form">
+            <label>
+              <span>Precio (1 - 999999)</span>
+              <input type="number" [(ngModel)]="sellPrice" min="1" max="999999" placeholder="Coins" />
+            </label>
+            <div class="preview-row">
+              <span>Vendiendo:</span>
+              <strong>{{ selectedSkin.name }}</strong>
+              <span class="preview-price">por {{ sellPrice | number:'1.0-0' }} coins</span>
             </div>
-            <span class="inv-name">{{ s.name }}</span>
-            <span class="inv-price">{{ s.price | number:'1.0-0' }}</span>
-          </button>
-        </div>
-
-        <div *ngIf="selectedSkin" class="sell-form">
-          <label>
-            <span>Precio (1 - 999999)</span>
-            <input type="number" [(ngModel)]="sellPrice" min="1" max="999999" placeholder="Coins" />
-          </label>
-          <div class="preview">
-            <span>Vendiendo:</span>
-            <strong>{{ selectedSkin.name }}</strong>
-            <span class="preview-price">por {{ sellPrice | number:'1.0-0' }} coins</span>
           </div>
         </div>
-
-        <div class="modal-actions">
-          <button class="ghost" (click)="closeSellModal()">Cancelar</button>
-          <button
-            class="cta"
-            [disabled]="!selectedSkin || !validPrice() || creating"
-            (click)="confirmSell()">
+        <footer class="modal-foot">
+          <button class="btn btn-ghost" (click)="closeSellModal()">Cancelar</button>
+          <button class="btn btn-primary" [disabled]="!selectedSkin || !validPrice() || creating" (click)="confirmSell()">
             {{ creating ? 'Publicando...' : 'PUBLICAR' }}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
 
@@ -264,325 +254,368 @@ type SortBy = 'price_asc' | 'price_desc' | 'newest';
       <div class="modal narrow" (click)="$event.stopPropagation()">
         <header class="modal-head">
           <h3>Confirmar compra</h3>
-          <button class="x" (click)="cancelBuy()">×</button>
+          <button class="modal-x" (click)="cancelBuy()">×</button>
         </header>
-
-        <div class="buy-preview">
-          <div class="buy-img"
-               [style.box-shadow]="'inset 0 -3px 0 ' + rarityColor(buyTarget()!.skin.rarity)">
+        <div class="modal-body buy-preview">
+          <div class="buy-img" [style.--rarity]="rarityVar(buyTarget()!.skin.rarity)">
             <img *ngIf="buyTarget()!.skin.imageUrl" [src]="buyTarget()!.skin.imageUrl" />
-            <span *ngIf="!buyTarget()!.skin.imageUrl" class="fallback">?</span>
           </div>
           <h3>{{ buyTarget()!.skin.name }}</h3>
           <p class="buy-meta">{{ buyTarget()!.skin.weapon }} · {{ buyTarget()!.skin.rarity }}</p>
           <p class="buy-seller">de <strong>{{ buyTarget()!.seller.username }}</strong></p>
-          <p class="buy-price">◈ {{ buyTarget()!.price | number:'1.0-0' }} coins</p>
+          <p class="buy-price">{{ buyTarget()!.price | number:'1.0-0' }} coins</p>
           <p class="buy-balance">Tu saldo: {{ auth.user()?.balance | number:'1.0-0' }} → {{ ((auth.user()?.balance || 0) - buyTarget()!.price) | number:'1.0-0' }}</p>
         </div>
-
-        <div class="modal-actions">
-          <button class="ghost" (click)="cancelBuy()">Cancelar</button>
-          <button class="cta" [disabled]="buying" (click)="confirmBuy()">
-            {{ buying ? 'Comprando...' : 'CONFIRMAR COMPRA' }}
+        <footer class="modal-foot">
+          <button class="btn btn-ghost" (click)="cancelBuy()">Cancelar</button>
+          <button class="btn btn-primary" [disabled]="buying" (click)="confirmBuy()">
+            {{ buying ? 'Comprando...' : 'CONFIRMAR' }}
           </button>
-        </div>
+        </footer>
       </div>
-    </div>
-
-    <!-- TOAST -->
-    <div *ngIf="toast()" class="toast" [class.error]="toast()?.type === 'error'" [class.success]="toast()?.type === 'success'">
-      {{ toast()?.message }}
     </div>
   `,
   styles: [`
-    :host { display: block; background: #0a0a0f; min-height: 100vh; color: #e0e0e0; }
-    .page { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem 3rem; }
+    .page { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem; }
 
-    .hero {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1.6rem 1.8rem; margin-bottom: 1.4rem;
-      background: linear-gradient(135deg, #16161a 0%, #1f1216 100%);
-      border: 1px solid #2a2a35; border-radius: 14px;
-      box-shadow: 0 0 40px rgba(255,107,0,0.06);
+    .page-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 1.5rem; flex-wrap: wrap;
     }
     .title {
-      font-size: 2.4rem; font-weight: 900; letter-spacing: 0.1em; margin: 0;
-      background: linear-gradient(90deg, #ff6b00, #ffd700);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 40px;
+      letter-spacing: 0.06em; line-height: 1; margin: 0;
+      color: var(--text-primary);
     }
-    .subtitle { color: #888; margin: 0.3rem 0 0; }
-    .cta {
-      background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff;
-      border: none; padding: 0.85rem 1.4rem; border-radius: 10px;
-      font-weight: 800; letter-spacing: 0.08em; cursor: pointer;
-      box-shadow: 0 4px 18px rgba(255,107,0,0.32);
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(255,107,0,0.45); }
-    .cta:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
-    .ghost {
-      background: transparent; color: #aaa; border: 1px solid #2a2a35;
-      padding: 0.5rem 0.9rem; border-radius: 8px; cursor: pointer; font-weight: 600;
-      transition: color 0.15s, border-color 0.15s;
-    }
-    .ghost:hover:not(:disabled) { color: #fff; border-color: #444; }
-    .ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+    .subtitle { color: var(--text-secondary); margin: 4px 0 0; font-size: 14px; }
 
     /* Filtros */
-    .filters {
-      position: sticky; top: 70px; z-index: 30;
-      background: rgba(10,10,15,0.92);
-      backdrop-filter: blur(8px);
-      padding: 1rem 1.2rem; margin-bottom: 1.4rem;
-      border: 1px solid #2a2a35; border-radius: 12px;
-      display: flex; flex-direction: column; gap: 0.9rem;
+    .filter-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      position: sticky; top: 0;
+      z-index: 30;
+      backdrop-filter: blur(6px);
     }
-    .filter-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
-    .filter-row.split { gap: 1.4rem; }
-    .filter-label { color: #666; font-size: 0.74rem; letter-spacing: 0.15em; }
+    .filter-row { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+    .filter-row.split { gap: 1.2rem; }
+    .filter-label {
+      font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-muted);
+      font-weight: 600;
+    }
     .pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
     .pill {
-      background: #16161a; border: 1px solid #2a2a35; color: #aaa;
-      padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.82rem;
-      font-weight: 600; cursor: pointer; transition: all 0.15s;
+      --rarity: var(--text-muted);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: var(--transition);
     }
-    .pill:hover { color: #fff; border-color: #444; }
-    .pill.active { background: rgba(255,107,0,0.1); border-color: #ff6b00; color: #ff6b00; }
-    .control { display: flex; flex-direction: column; gap: 0.3rem; min-width: 140px; }
-    .control label { color: #666; font-size: 0.7rem; letter-spacing: 0.15em; }
+    .pill:hover { color: var(--text-primary); border-color: var(--border-strong); }
+    .pill.active {
+      color: var(--rarity);
+      border-color: var(--rarity);
+      background: color-mix(in srgb, var(--rarity) 12%, transparent);
+    }
+    .control { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
     .control select, .control input {
-      background: #0a0a0f; border: 1px solid #2a2a35; color: #e0e0e0;
-      padding: 0.55rem 0.8rem; border-radius: 8px;
-      font-size: 0.92rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      padding: 0.4rem 0.7rem;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
     }
-    .control select:focus, .control input:focus {
-      outline: none; border-color: #ff6b00;
-    }
-    .range-inputs { display: flex; gap: 0.4rem; align-items: center; }
+    .control select:focus, .control input:focus { outline: none; border-color: var(--accent); }
+    .range-inputs { display: flex; gap: 0.3rem; align-items: center; color: var(--text-muted); }
     .range-inputs input { width: 90px; }
 
-    /* Grid */
-    .grid-wrap { min-height: 200px; }
+    /* GRID */
     .grid {
-      display: grid; gap: 1rem;
-      grid-template-columns: repeat(2, 1fr);
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
-    @media (min-width: 640px)  { .grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (min-width: 960px)  { .grid { grid-template-columns: repeat(4, 1fr); } }
-    @media (min-width: 1280px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+    .skeleton-card { aspect-ratio: 1 / 1.35; }
 
-    .skeleton {
-      background: linear-gradient(90deg, #16161a 0%, #1d1d24 50%, #16161a 100%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-      border-radius: 12px; height: 280px;
-    }
-    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .empty-state { padding: 4rem 2rem; }
+    .empty-state svg { width: 48px; height: 48px; }
 
-    .empty {
-      text-align: center; padding: 4rem 2rem;
-      background: #16161a; border: 1px dashed #2a2a35; border-radius: 14px;
+    .listing {
+      --rarity: var(--text-muted);
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: var(--transition);
     }
-    .empty-icon { font-size: 3rem; margin-bottom: 0.4rem; }
-    .empty p { color: #888; margin-bottom: 1rem; }
-    .empty-row { color: #666; padding: 0.8rem 0; }
+    .listing::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 3px; background: var(--rarity);
+    }
+    .listing:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255,107,0,0.35);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--rarity) 22%, transparent);
+    }
+    .listing.mine::before {
+      content: '';
+      position: absolute; inset: 0;
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-md);
+      pointer-events: none;
+    }
 
-    .card {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 12px;
-      padding: 0.9rem; display: flex; flex-direction: column;
-      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    .listing-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.55rem 0.7rem 0.3rem;
     }
-    .card:hover { transform: translateY(-3px); border-color: #ff6b00; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-    .card-img {
-      position: relative; background: #0a0a0f;
-      border-radius: 10px; padding: 0.7rem; min-height: 120px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 0.6rem;
+    .listing-price {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+      line-height: 1;
     }
-    .card-img img { max-width: 100%; max-height: 100px; object-fit: contain; }
-    .card-img .fallback { color: #444; font-size: 1.8rem; }
+    .listing-price small {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
     .rarity-badge {
-      position: absolute; top: 6px; left: 6px;
-      padding: 0.18rem 0.5rem; border-radius: 4px;
-      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
       text-transform: uppercase;
+      color: var(--rarity);
+      background: color-mix(in srgb, var(--rarity) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--rarity) 30%, transparent);
     }
+
+    .listing-img {
+      flex: 0 0 110px;
+      padding: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle, color-mix(in srgb, var(--rarity) 8%, transparent), transparent 75%);
+    }
+    .listing-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .listing-img .fallback { color: var(--text-muted); opacity: 0.4; font-size: 22px; }
+
+    .listing-body {
+      padding: 0.4rem 0.75rem 0.85rem;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .listing-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-primary);
+      margin: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .listing-meta { color: var(--text-muted); font-size: 11px; margin: 0; }
+    .listing-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 6px; gap: 0.4rem;
+    }
+    .seller { display: flex; align-items: center; gap: 4px; min-width: 0; }
+    .seller-avatar {
+      width: 18px; height: 18px; border-radius: 5px;
+      background: linear-gradient(135deg, var(--accent), #ff3d00);
+      color: #fff; font-weight: 700; font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .seller-name { color: var(--text-secondary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .base-price { color: var(--text-muted); font-size: 10px; }
+
     .mine-badge {
       position: absolute; top: 6px; right: 6px;
-      padding: 0.18rem 0.5rem; border-radius: 4px;
-      font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em;
-      background: rgba(255,215,0,0.18); color: #ffd700;
-      border: 1px solid #ffd700;
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+      background: var(--gold-muted); color: var(--gold);
+      border: 1px solid var(--gold);
+      z-index: 2;
     }
-    .card-name { color: #e0e0e0; font-size: 0.88rem; margin: 0; line-height: 1.2; }
-    .card-weapon { color: #888; font-size: 0.72rem; margin: 0.1rem 0; }
-    .card-seller {
-      display: flex; align-items: center; gap: 0.4rem;
-      margin: 0.4rem 0;
-    }
-    .seller-avatar {
-      width: 22px; height: 22px; border-radius: 50%;
-      background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: 800;
-    }
-    .seller-name { color: #aaa; font-size: 0.78rem; }
-    .card-foot {
-      margin-top: auto; padding-top: 0.5rem;
-      display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
-    }
-    .card-price { color: #ff6b00; font-weight: 800; font-size: 1rem; white-space: nowrap; }
-    .buy-btn, .cancel-btn {
-      border: none; padding: 0.5rem 0.85rem; border-radius: 7px;
-      font-weight: 800; letter-spacing: 0.06em; cursor: pointer;
-      font-size: 0.78rem;
-      transition: transform 0.15s;
-    }
-    .buy-btn { background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff; }
-    .buy-btn:hover:not(:disabled) { transform: translateY(-1px); }
-    .buy-btn:disabled { background: #2a2a35; color: #666; cursor: not-allowed; }
-    .cancel-btn {
-      background: transparent; border: 1px solid #ff4444; color: #ff4444;
-    }
-    .cancel-btn:hover { background: #ff4444; color: #fff; }
-    .cancel-btn.small { padding: 0.35rem 0.7rem; font-size: 0.7rem; }
 
-    .pagination {
-      display: flex; align-items: center; justify-content: center; gap: 1rem;
-      margin-top: 1.4rem;
+    /* Hover overlay con botón */
+    .listing-overlay {
+      position: absolute; inset: 0;
+      background: rgba(8, 8, 14, 0.78);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s ease;
+      backdrop-filter: blur(2px);
     }
-    .page-info { color: #666; font-size: 0.85rem; }
+    .listing:hover .listing-overlay,
+    .listing:focus-within .listing-overlay {
+      opacity: 1; pointer-events: auto;
+    }
+    .listing-overlay .btn { padding: 0.65rem 1.2rem; font-size: 13px; letter-spacing: 0.08em; }
+
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.4rem; }
+    .page-info { color: var(--text-muted); font-size: 12px; }
 
     /* Mis listings */
-    .my-section { margin-top: 2.4rem; }
-    .my-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
-    .section-h { color: #e0e0e0; margin: 0; font-size: 1.15rem; letter-spacing: 0.08em; text-transform: uppercase; }
-    .my-table-wrap {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 12px;
-      overflow-x: auto;
+    .my-section { margin-top: 1.5rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
+    .section-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 18px; color: var(--text-primary);
     }
+    .empty-row { color: var(--text-muted); font-size: 13px; padding: 0.5rem 0; }
+
+    .my-table-wrap { overflow-x: auto; padding: 0; }
     .my-table { width: 100%; border-collapse: collapse; min-width: 720px; }
     .my-table th {
       text-align: left; padding: 0.85rem 1rem;
-      color: #666; font-size: 0.72rem; letter-spacing: 0.12em;
-      border-bottom: 1px solid #2a2a35; font-weight: 600;
+      color: var(--text-muted); font-size: 10px;
+      letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+      border-bottom: 1px solid var(--border-subtle);
     }
     .my-table td {
-      padding: 0.75rem 1rem; border-bottom: 1px solid #1f1f2a;
-      color: #ccc; font-size: 0.88rem;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary); font-size: 13px;
     }
     .my-table tbody tr:last-child td { border-bottom: none; }
-    .my-table tbody tr:hover { background: rgba(255,107,0,0.04); }
+    .my-table tbody tr:hover { background: var(--bg-hover); }
     .row-skin { display: flex; align-items: center; gap: 0.6rem; }
     .row-img {
-      width: 44px; height: 44px; background: #0a0a0f; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; padding: 4px;
+      --rarity: var(--text-muted);
+      width: 44px; height: 44px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--rarity) 12%, transparent), transparent);
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      padding: 4px;
     }
     .row-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .row-img .fallback { color: #444; font-size: 1rem; }
-    .row-name { color: #e0e0e0; font-weight: 600; }
-    .row-weapon { color: #666; font-size: 0.78rem; }
-    .row-price { color: #ff6b00; font-weight: 700; }
-    .row-date { color: #888; }
+    .row-name { color: var(--text-primary); font-weight: 600; }
+    .row-weapon { color: var(--text-muted); font-size: 11px; }
+    .row-price { color: var(--gold); font-family: 'Rajdhani', sans-serif; font-weight: 700; }
+    .row-date { color: var(--text-muted); }
     .status-pill {
-      padding: 0.22rem 0.7rem; border-radius: 999px;
-      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
       border: 1px solid;
     }
-    .status-pill.active { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.1); }
-    .status-pill.sold { color: #888; border-color: #444; background: rgba(255,255,255,0.04); }
-    .status-pill.cancelled { color: #ff4444; border-color: #ff4444; background: rgba(255,68,68,0.08); }
+    .status-pill.active { color: var(--green); border-color: var(--green); background: var(--green-muted); }
+    .status-pill.sold { color: var(--text-muted); border-color: var(--border-default); background: var(--bg-elevated); }
+    .status-pill.cancelled { color: var(--red); border-color: var(--red); background: var(--red-muted); }
 
     /* Modal */
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+      position: fixed; inset: 0;
+      background: rgba(5,5,10,0.65);
+      backdrop-filter: blur(8px);
       display: flex; align-items: center; justify-content: center;
-      z-index: 100; backdrop-filter: blur(4px); padding: 1rem;
-      animation: fadein 0.18s ease-out;
+      z-index: 200; padding: 1rem;
+      animation: backdrop-in 0.18s ease-out;
     }
-    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
     .modal {
-      background: #16161a; border: 1px solid #2a2a35; border-radius: 14px;
-      padding: 1.5rem; width: min(640px, 100%); max-height: 90vh; overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      width: min(640px, 100%);
+      max-height: 88vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
     }
     .modal.narrow { width: min(420px, 100%); }
-    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
-    .modal-head h3 { color: #e0e0e0; margin: 0; font-size: 1.25rem; }
-    .x { background: transparent; border: none; color: #666; font-size: 1.6rem; cursor: pointer; line-height: 1; }
-    .x:hover { color: #fff; }
+    .modal-head {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-head h3 { font-family: 'Rajdhani', sans-serif; font-size: 22px; color: var(--text-primary); margin: 0; }
+    .modal-x {
+      background: transparent; border: none; color: var(--text-muted);
+      font-size: 1.6rem; line-height: 1; cursor: pointer;
+    }
+    .modal-x:hover { color: var(--text-primary); }
+    .modal-body { padding: 1.4rem; overflow-y: auto; flex: 1; }
+    .modal-foot { padding: 1rem 1.4rem; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 0.6rem; }
 
-    .inv-grid {
+    .sell-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 0.6rem; margin: 0.8rem 0;
+      gap: 8px; margin-bottom: 0.9rem;
     }
-    .inv-tile {
-      background: #0a0a0f; border: 1px solid #2a2a35; border-radius: 8px;
-      padding: 0.6rem; cursor: pointer; color: #e0e0e0;
-      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
-      transition: transform 0.12s, border-color 0.12s;
+    .sell-tile {
+      background: var(--bg-surface); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm); padding: 0.5rem;
+      cursor: pointer; color: var(--text-primary);
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      transition: var(--transition);
     }
-    .inv-tile:hover { transform: translateY(-2px); border-color: #ff6b00; }
-    .inv-tile.selected { border-color: #ff6b00; background: #1a1410; box-shadow: 0 0 0 2px rgba(255,107,0,0.4); }
-    .inv-img { width: 100%; height: 64px; display: flex; align-items: center; justify-content: center; }
-    .inv-img img { max-width: 100%; max-height: 64px; object-fit: contain; }
-    .inv-img .fallback { color: #444; font-size: 1.4rem; }
-    .inv-name { font-size: 0.74rem; line-height: 1.1; text-align: center; }
-    .inv-price { color: #ffd700; font-weight: 700; font-size: 0.78rem; }
+    .sell-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .sell-tile.selected { border-color: var(--accent); background: var(--accent-muted); box-shadow: 0 0 0 1px var(--accent); }
+    .sell-img { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; }
+    .sell-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .sell-name { font-size: 11px; line-height: 1.1; text-align: center; color: var(--text-secondary); }
+    .sell-price { color: var(--gold); font-weight: 700; font-size: 12px; }
 
-    .sell-form { display: flex; flex-direction: column; gap: 0.7rem; margin: 0.8rem 0 1rem; }
-    .sell-form label { display: flex; flex-direction: column; gap: 0.3rem; color: #888; font-size: 0.8rem; }
+    .sell-form { display: flex; flex-direction: column; gap: 0.7rem; }
+    .sell-form label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--text-muted); font-size: 12px; }
     .sell-form input {
-      background: #0a0a0f; border: 1px solid #2a2a35; color: #e0e0e0;
-      padding: 0.65rem 0.9rem; border-radius: 8px; font-size: 1rem;
+      background: var(--bg-surface); border: 1px solid var(--border-default);
+      color: var(--text-primary); padding: 0.65rem 0.85rem;
+      border-radius: var(--radius-sm); font-size: 14px;
     }
-    .sell-form input:focus { outline: none; border-color: #ff6b00; }
-    .preview {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.7rem 0.9rem; background: #0a0a0f;
-      border: 1px solid #2a2a35; border-radius: 8px; font-size: 0.9rem;
-      color: #888; flex-wrap: wrap;
+    .sell-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+    .preview-row {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.7rem 0.85rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
     }
-    .preview strong { color: #ff6b00; }
-    .preview-price { color: #ffd700; margin-left: auto; font-weight: 700; }
-
-    .modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+    .preview-row strong { color: var(--accent); }
+    .preview-price { color: var(--gold); margin-left: auto; font-weight: 700; }
 
     /* Buy modal */
-    .buy-preview { text-align: center; margin-bottom: 1rem; }
+    .buy-preview { text-align: center; }
     .buy-img {
+      --rarity: var(--text-muted);
       width: 220px; height: 160px; margin: 0 auto 0.7rem;
-      background: #0a0a0f; border-radius: 12px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--rarity) 12%, transparent), transparent 75%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center; padding: 1rem;
     }
     .buy-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .buy-meta { color: #888; margin: 0.2rem 0; font-size: 0.85rem; }
-    .buy-seller { color: #aaa; margin: 0.2rem 0; font-size: 0.9rem; }
-    .buy-seller strong { color: #ff6b00; }
-    .buy-price { color: #ff6b00; font-weight: 800; font-size: 1.4rem; margin: 0.6rem 0; }
-    .buy-balance { color: #888; font-size: 0.85rem; margin: 0; }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-      padding: 0.85rem 1.4rem; border-radius: 10px;
-      font-weight: 600; z-index: 200;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      animation: toastUp 0.25s ease-out;
+    .buy-meta { color: var(--text-muted); margin: 0.2rem 0; font-size: 13px; }
+    .buy-seller { color: var(--text-secondary); margin: 0.2rem 0; font-size: 13px; }
+    .buy-seller strong { color: var(--accent); }
+    .buy-price {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; font-size: 28px;
+      color: var(--gold);
+      margin: 0.6rem 0;
     }
-    .toast.error { background: #2b1414; color: #ff6b6b; border: 1px solid #ff4444; }
-    .toast.success { background: #14241c; color: #6bff8f; border: 1px solid #4caf50; }
-    @keyframes toastUp {
-      from { transform: translate(-50%, 20px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
-    }
+    .buy-balance { color: var(--text-muted); font-size: 12px; margin: 0; }
   `],
 })
 export class MarketplaceComponent implements OnInit, OnDestroy {
   rarities = RARITIES;
   weapons = WEAPONS;
 
-  filters: MarketFilters = { sortBy: 'newest', page: 1, limit: 20 };
+  filters: MarketFilters = { sortBy: 'newest', page: 1, limit: 24 };
   listings = signal<Listing[]>([]);
   myListings = signal<Listing[]>([]);
   inventory = signal<Skin[]>([]);
@@ -598,9 +631,7 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
   buyTarget = signal<Listing | null>(null);
   buying = false;
 
-  toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  skeletonArr = Array.from({ length: 10 });
+  skeletonArr = Array.from({ length: 12 });
 
   private subs: Subscription[] = [];
 
@@ -620,16 +651,14 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.socket.onMarketListed().subscribe((l) => {
         if (this.matchesFilters(l) && this.page() === 1) {
-          this.listings.update((arr) => [l, ...arr.filter((x) => x.id !== l.id)].slice(0, this.filters.limit || 20));
+          this.listings.update((arr) => [l, ...arr.filter((x) => x.id !== l.id)].slice(0, this.filters.limit || 24));
         }
       }),
       this.socket.onMarketSold().subscribe((l) => {
         this.listings.update((arr) => arr.filter((x) => x.id !== l.id));
-        this.refreshUserBits(l);
       }),
       this.socket.onMarketCancelled().subscribe((l) => {
         this.listings.update((arr) => arr.filter((x) => x.id !== l.id));
-        this.refreshUserBits(l);
       }),
     );
   }
@@ -652,7 +681,7 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
       error: () => {
         this.listings.set([]);
         this.loading.set(false);
-        this.showToast('error', 'Error al cargar listings');
+        this.toastSvc.error('Error al cargar listings');
       },
     });
   }
@@ -671,7 +700,7 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
   }
 
   clearFilters() {
-    this.filters = { sortBy: 'newest', page: 1, limit: 20 };
+    this.filters = { sortBy: 'newest', page: 1, limit: 24 };
     this.reload();
   }
 
@@ -689,28 +718,19 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* Sell flow */
+  /* Sell */
   openSellModal() {
     this.loadInventory();
     this.selectedSkin = undefined;
     this.sellPrice = 0;
     this.showSellModal = true;
   }
-
-  closeSellModal() {
-    this.showSellModal = false;
-    this.selectedSkin = undefined;
-  }
-
+  closeSellModal() { this.showSellModal = false; this.selectedSkin = undefined; }
   selectSkin(s: Skin) {
     this.selectedSkin = s;
     if (!this.sellPrice) this.sellPrice = Math.round(s.price);
   }
-
-  validPrice() {
-    return this.sellPrice >= 1 && this.sellPrice <= 999999;
-  }
-
+  validPrice() { return this.sellPrice >= 1 && this.sellPrice <= 999999; }
   confirmSell() {
     if (!this.selectedSkin || !this.validPrice() || this.creating) return;
     this.creating = true;
@@ -719,27 +739,23 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
         this.creating = false;
         this.showSellModal = false;
         this.selectedSkin = undefined;
-        this.showToast('success', 'Listing publicado');
+        this.toastSvc.success('Listing publicado');
         this.loadMyListings();
         this.reload(false);
       },
       error: (err) => {
         this.creating = false;
-        this.showToast('error', err?.error?.error || 'Error al publicar');
+        this.toastSvc.error(err?.error?.error || 'Error al publicar');
       },
     });
   }
 
-  /* Buy flow */
+  /* Buy */
   askBuy(l: Listing) {
     if (this.isMine(l) || !this.canAfford(l)) return;
     this.buyTarget.set(l);
   }
-
-  cancelBuy() {
-    this.buyTarget.set(null);
-  }
-
+  cancelBuy() { this.buyTarget.set(null); }
   confirmBuy() {
     const target = this.buyTarget();
     if (!target || this.buying) return;
@@ -749,12 +765,12 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
         this.buying = false;
         this.buyTarget.set(null);
         this.listings.update((arr) => arr.filter((x) => x.id !== target.id));
-        this.showToast('success', `Has comprado ${sold.skin.name}`);
+        this.toastSvc.success(`Has comprado ${sold.skin.name}`);
         this.loadMyListings();
       },
       error: (err) => {
         this.buying = false;
-        this.showToast('error', err?.error?.error || 'Error al comprar');
+        this.toastSvc.error(err?.error?.error || 'Error al comprar');
       },
     });
   }
@@ -765,9 +781,9 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
       next: () => {
         this.listings.update((arr) => arr.filter((x) => x.id !== l.id));
         this.loadMyListings();
-        this.showToast('success', 'Listing cancelado');
+        this.toastSvc.success('Listing cancelado');
       },
-      error: (err) => this.showToast('error', err?.error?.error || 'Error al cancelar'),
+      error: (err) => this.toastSvc.error(err?.error?.error || 'Error al cancelar'),
     });
   }
 
@@ -776,28 +792,14 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
     const me = this.auth.user();
     return !!me && String(me.id) === String(l.sellerId);
   }
-  canAfford(l: Listing) {
-    return (this.auth.user()?.balance || 0) >= l.price;
+  canAfford(l: Listing) { return (this.auth.user()?.balance || 0) >= l.price; }
+  initial(name?: string) { return (name?.charAt(0) || '?').toUpperCase(); }
+  rarityVar(r?: string): string {
+    if (!r) return 'var(--text-muted)';
+    const key = r.toLowerCase().replace(/\s+/g, '');
+    return RARITY_VARS[key] ? `var(${RARITY_VARS[key]})` : 'var(--text-muted)';
   }
-  initial(name?: string) {
-    return (name?.charAt(0) || '?').toUpperCase();
-  }
-  rarityColor(r?: string) {
-    if (!r) return '#888';
-    return RARITY_COLORS[r.toLowerCase().replace(/\s+/g, '')] || '#888';
-  }
-  rarityBg(r?: string) {
-    return this.rarityColor(r) + '33';
-  }
-  trackById(_: number, l: Listing) {
-    return l.id;
-  }
-  showToast(type: 'success' | 'error', message: string) {
-    this.toast.set({ type, message });
-    setTimeout(() => this.toast.set(null), 3200);
-    if (type === 'error') this.toastSvc.error(message);
-    else this.toastSvc.success(message);
-  }
+  trackById(_: number, l: Listing) { return l.id; }
 
   private matchesFilters(l: Listing): boolean {
     if (l.status !== 'active') return false;
@@ -825,9 +827,5 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
       buyer: l.buyer ? { ...l.buyer, id: String(l.buyer.id) } : l.buyer,
       skin: l.skin ? { ...l.skin, id: String(l.skin.id) } : l.skin,
     }));
-  }
-
-  private refreshUserBits(_l: Listing) {
-    // placeholder if we want to refresh stats / balance after socket events from others
   }
 }

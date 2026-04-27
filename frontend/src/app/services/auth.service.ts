@@ -61,4 +61,18 @@ export class AuthService {
     this.currentUser.set(user);
     localStorage.setItem('user', JSON.stringify(user));
   }
+
+  /**
+   * Mezcla campos del perfil (level, experience, levelData, balance...) con
+   * el usuario actual sin perder los demás. Usado tras un getProfile() o un
+   * evento de level-up.
+   */
+  applyProfileSnapshot(snapshot: { [k: string]: any }): void {
+    const current = this.currentUser();
+    if (!current) return;
+    const merged: any = { ...current, ...snapshot };
+    if (merged.avatar === null) merged.avatar = undefined;
+    this.currentUser.set(merged as User);
+    localStorage.setItem('user', JSON.stringify(merged));
+  }
 }
