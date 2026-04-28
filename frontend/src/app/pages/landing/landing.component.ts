@@ -126,9 +126,15 @@ const STAT_DEFS: CounterStat[] = [
     </div>
   `,
   styles: [`
-    :host { display: block; }
-    /* Romper el padding 2rem del .main-content para hero fullscreen */
-    .landing { margin: -2rem; }
+    :host {
+      display: block;
+      margin: -2rem;
+      min-height: 100vh;
+    }
+
+    .landing {
+      min-height: 100vh;
+    }
 
     .hero {
       position: relative;

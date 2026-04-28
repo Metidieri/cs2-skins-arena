@@ -40,7 +40,8 @@
       "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/rxjs/package.json'\\); console.log\\('rxjs resolved:', p.version\\);\")",
       "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/zone.js/package.json'\\); console.log\\('zone.js resolved:', p.version\\);\")",
       "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@fontsource/inter/package.json'\\); console.log\\('inter:',p.version\\)\")",
-      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@fontsource/rajdhani/package.json'\\); console.log\\('rajdhani:',p.version\\)\")"
+      "Bash(node -e \"const p=require\\('C:/Users/pedro/Desktop/Proyectos/cs2-skins-arena/frontend/node_modules/@fontsource/rajdhani/package.json'\\); console.log\\('rajdhani:',p.version\\)\")",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

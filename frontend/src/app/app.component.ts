@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit, effect } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { trigger, transition, style, animate, query } from '@angular/animations';
 import { AuthService } from './services/auth.service';
 import { SocketService } from './services/socket.service';
 import { ToastService } from './shared/services/toast.service';
@@ -10,26 +9,16 @@ import { ToastComponent } from './shared/components/toast/toast.component';
 import { LoadingBarComponent } from './shared/components/loading-bar/loading-bar.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 
-const routeAnim = trigger('routeAnim', [
-  transition('* <=> *', [
-    query(':enter', [
-      style({ opacity: 0, transform: 'translateY(10px)' }),
-      animate('200ms ease', style({ opacity: 1, transform: 'translateY(0)' })),
-    ], { optional: true }),
-  ]),
-]);
-
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet, ToastComponent, LoadingBarComponent, SidebarComponent],
-  animations: [routeAnim],
   template: `
     <app-loading-bar />
     <div class="app-layout">
       <app-sidebar />
-      <main class="main-content" [@routeAnim]="getRouteState(o)">
-        <router-outlet #o="outlet" />
+      <main class="main-content">
+        <router-outlet />
       </main>
     </div>
     <app-toast />
@@ -73,9 +62,5 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subs.forEach((s) => s.unsubscribe());
-  }
-
-  getRouteState(outlet: RouterOutlet): string {
-    return outlet?.activatedRouteData?.['animation'] || outlet?.activatedRoute?.snapshot?.url?.[0]?.path || '';
   }
 }
