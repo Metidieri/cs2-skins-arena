@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/db');
 const { calculateResult, calculatePayout } = require('../utils/rouletteSystem');
 const { addExperience } = require('../services/levelService');
+const { collectHouseEdge } = require('../utils/houseService');
 
 const BETTING_DURATION_MS = 20_000;
 const RESULT_DISPLAY_MS = 5_000;
@@ -183,7 +184,8 @@ async function placeBet(req, res) {
       return res.status(400).json({ error: 'Saldo insuficiente' });
     }
 
-    const jackpotContrib = amount * 0.05;
+    const jackpotContrib = amount * 0.03;
+    const houseContrib = amount * 0.02;
 
     const bet = await prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -215,6 +217,8 @@ async function placeBet(req, res) {
     // Keep in-memory round in sync
     currentRound.potTotal = (currentRound.potTotal || 0) + amount;
     currentRound.jackpotPool = (currentRound.jackpotPool || 0) + jackpotContrib;
+
+    collectHouseEdge(houseContrib, null).catch(() => {});
 
     if (io) io.to('roulette').emit('roulette:bet_placed', bet);
 

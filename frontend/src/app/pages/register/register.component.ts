@@ -1,7 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../shared/services/toast.service';
 
@@ -16,6 +16,10 @@ import { ToastService } from '../../shared/services/toast.service';
           <a routerLink="/" class="logo">
             <span>CS2</span><span class="accent">ARENA</span>
           </a>
+
+          <div class="referral-banner" *ngIf="refCode()">
+            🎁 <strong>Bonus de referido activado.</strong> Tú y tu amigo recibís <strong>+500 coins</strong> al registrarte.
+          </div>
 
           <header class="header">
             <h1>Crea tu cuenta</h1>
@@ -47,6 +51,11 @@ import { ToastService } from '../../shared/services/toast.service';
                 [class.has-error]="emailError()"
                 required />
               <span class="field-error" *ngIf="emailError()">{{ emailError() }}</span>
+            </label>
+
+            <label class="field" *ngIf="refCode()">
+              <span class="label">Código referido</span>
+              <input type="text" [value]="refCode()" readonly class="ref-input" />
             </label>
 
             <label class="field">
@@ -239,6 +248,21 @@ import { ToastService } from '../../shared/services/toast.service';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .referral-banner {
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      color: #6ee7b7;
+    }
+    .referral-banner strong { color: #10b981; }
+    .ref-input {
+      background: var(--bg-elevated) !important;
+      color: var(--text-muted) !important;
+      cursor: default !important;
+    }
+
     .switch { color: var(--text-muted); font-size: 13px; text-align: center; }
     .switch a { color: var(--accent); font-weight: 600; }
     .switch a:hover { text-decoration: underline; }
@@ -311,10 +335,11 @@ import { ToastService } from '../../shared/services/toast.service';
     }
   `],
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   username = '';
   email = '';
   password = '';
+  refCode = signal('');
   formError = signal('');
   usernameError = signal('');
   emailError = signal('');
@@ -322,7 +347,17 @@ export class RegisterComponent {
   loading = signal(false);
   showPassword = signal(false);
 
-  constructor(private auth: AuthService, private router: Router, private toast: ToastService) {}
+  constructor(
+    private auth: AuthService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private toast: ToastService,
+  ) {}
+
+  ngOnInit() {
+    const ref = this.route.snapshot.queryParamMap.get('ref');
+    if (ref) this.refCode.set(ref);
+  }
 
   togglePassword() { this.showPassword.update((v) => !v); }
 
@@ -349,7 +384,9 @@ export class RegisterComponent {
     this.formError.set('');
     if (!this.validate()) return;
     this.loading.set(true);
-    this.auth.register({ username: this.username, email: this.email, password: this.password }).subscribe({
+    const payload: any = { username: this.username, email: this.email, password: this.password };
+    if (this.refCode()) payload.referralCode = this.refCode();
+    this.auth.register(payload).subscribe({
       next: () => {
         this.loading.set(false);
         this.toast.success('Cuenta creada');

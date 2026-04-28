@@ -1,22 +1,48 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { BoxService } from '../../../services/box.service';
+import { SocketService } from '../../../services/socket.service';
+import { NotificationService } from '../../../services/notification.service';
 import { LevelBadgeComponent } from '../level-badge/level-badge.component';
 import { ChatComponent } from '../chat/chat.component';
+import { NotificationsComponent } from '../notifications/notifications.component';
+import { Notification } from '../../../models/notification.model';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, LevelBadgeComponent, ChatComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, LevelBadgeComponent, ChatComponent, NotificationsComponent],
   template: `
     <aside class="sidebar">
-      <!-- Logo -->
+      <!-- Logo + online counter -->
       <a routerLink="/" class="sidebar-logo">
         <span class="logo-text">CS2</span>
         <span class="logo-accent">ARENA</span>
+        <span class="online-pill">
+          <span class="online-dot"></span>
+          {{ onlineCount }}
+        </span>
       </a>
+
+      <!-- Notification bell -->
+      <div class="notif-trigger-row" *ngIf="auth.isLoggedIn()">
+        <button class="notif-bell" (click)="toggleNotifs($event)" [class.has-unread]="unreadCount > 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 01-3.46 0"></path>
+          </svg>
+          <span class="notif-count" *ngIf="unreadCount > 0">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+        </button>
+        <span class="notif-label">Notificaciones</span>
+        <app-notifications
+          *ngIf="showNotifs"
+          [notifications]="notifications"
+          (updated)="onNotifsUpdated($event)">
+        </app-notifications>
+      </div>
 
       <!-- Balance del usuario -->
       <div class="sidebar-balance" *ngIf="auth.isLoggedIn()">
@@ -92,6 +118,14 @@ import { ChatComponent } from '../chat/chat.component';
           <span class="nav-label">Cajas</span>
         </a>
 
+        <a routerLink="/drops" routerLinkActive="active" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span class="nav-label">Drops en vivo</span>
+          <span class="live-dot"></span>
+        </a>
+
         <span class="nav-section-label">Cuenta</span>
 
         <a routerLink="/inventory" routerLinkActive="active" class="nav-item">
@@ -123,6 +157,14 @@ import { ChatComponent } from '../chat/chat.component';
           <span class="nav-label">Estadísticas</span>
         </a>
 
+        <a routerLink="/level" routerLinkActive="active" class="nav-item" *ngIf="auth.isLoggedIn()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+          <span class="nav-label">Mi Nivel</span>
+        </a>
+
         <a routerLink="/history" routerLinkActive="active" class="nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.5"></path>
@@ -140,6 +182,17 @@ import { ChatComponent } from '../chat/chat.component';
           </svg>
           <span class="nav-label">Ranking</span>
         </a>
+
+        <ng-container *ngIf="isAdmin()">
+          <span class="nav-section-label">Admin</span>
+          <a routerLink="/admin" routerLinkActive="active" class="nav-item admin-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"></path>
+            </svg>
+            <span class="nav-label">Panel Admin</span>
+          </a>
+        </ng-container>
       </nav>
 
       <!-- Chat general -->
@@ -151,7 +204,7 @@ import { ChatComponent } from '../chat/chat.component';
           <div class="user-avatar">{{ initial() }}</div>
           <div class="user-info">
             <span class="user-name">{{ auth.user()?.username }}</span>
-            <span class="user-role">Jugador</span>
+            <span class="user-role">{{ isAdmin() ? 'Admin' : 'Jugador' }}</span>
           </div>
         </a>
         <button class="btn-logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
@@ -186,18 +239,91 @@ import { ChatComponent } from '../chat/chat.component';
     }
 
     .sidebar-logo {
-      padding: 1.5rem 1.25rem 1rem;
+      padding: 1.25rem 1.25rem 0.875rem;
       font-family: 'Rajdhani', sans-serif;
       font-size: 22px;
       font-weight: 700;
       letter-spacing: 0.05em;
       border-bottom: 1px solid var(--border-subtle);
-      margin-bottom: 0.5rem;
-      display: block;
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
       text-decoration: none;
     }
     .logo-text { color: var(--text-primary); }
     .logo-accent { color: var(--accent); margin-left: 4px; }
+    .online-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 12px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      color: #10b981;
+    }
+    .online-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 3px rgba(16,185,129,0); }
+    }
+
+    .notif-trigger-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+    .notif-bell {
+      width: 32px; height: 32px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+    .notif-bell svg { width: 15px; height: 15px; }
+    .notif-bell:hover, .notif-bell.has-unread {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .notif-count {
+      position: absolute;
+      top: -5px; right: -5px;
+      min-width: 16px; height: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      line-height: 1;
+    }
+    .notif-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
 
     .sidebar-balance {
       margin: 0.75rem 1rem;
@@ -305,6 +431,11 @@ import { ChatComponent } from '../chat/chat.component';
       border-radius: 0 2px 2px 0;
     }
 
+    .admin-item { color: #f59e0b; }
+    .admin-item:hover { background: rgba(245,158,11,0.08); color: #f59e0b; }
+    .admin-item.active { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .admin-item.active::before { background: #f59e0b; }
+
     .nav-badge {
       margin-left: auto;
       padding: 2px 6px;
@@ -330,6 +461,18 @@ import { ChatComponent } from '../chat/chat.component';
       background: var(--bg-elevated);
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #ef4444;
+      margin-left: auto;
+      animation: pulse-red 1.5s infinite;
+    }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(239,68,68,0); }
     }
 
     .sidebar-footer {
@@ -436,22 +579,75 @@ import { ChatComponent } from '../chat/chat.component';
 export class SidebarComponent implements OnInit, OnDestroy {
   boxCanOpen = false;
   boxCountdown = '';
+  onlineCount = 0;
+  notifications: Notification[] = [];
+  showNotifs = false;
+
   private badgeInterval: ReturnType<typeof setInterval> | null = null;
   private countdownMs = 0;
   private tickInterval: ReturnType<typeof setInterval> | null = null;
+  private subs: Subscription[] = [];
 
-  constructor(public auth: AuthService, private router: Router, private box: BoxService) {}
+  constructor(
+    public auth: AuthService,
+    private router: Router,
+    private box: BoxService,
+    private socket: SocketService,
+    private notifService: NotificationService,
+  ) {}
 
   ngOnInit() {
-    if (this.auth.isLoggedIn()) this.refreshBoxStatus();
+    if (this.auth.isLoggedIn()) {
+      this.refreshBoxStatus();
+      this.loadNotifications();
+    }
     this.badgeInterval = setInterval(() => {
       if (this.auth.isLoggedIn()) this.refreshBoxStatus();
     }, 60_000);
+
+    this.subs.push(
+      this.socket.onUsersOnlineCount().subscribe((count: number) => {
+        this.onlineCount = count;
+      }),
+      this.socket.onNotification().subscribe((n: Notification) => {
+        this.notifications = [n, ...this.notifications];
+      }),
+    );
   }
 
   ngOnDestroy() {
     if (this.badgeInterval) clearInterval(this.badgeInterval);
     if (this.tickInterval) clearInterval(this.tickInterval);
+    this.subs.forEach((s) => s.unsubscribe());
+  }
+
+  get unreadCount(): number {
+    return this.notifications.filter((n) => !n.read).length;
+  }
+
+  isAdmin(): boolean {
+    return (this.auth.user() as any)?.role === 'ADMIN';
+  }
+
+  toggleNotifs(event: Event) {
+    event.stopPropagation();
+    this.showNotifs = !this.showNotifs;
+  }
+
+  @HostListener('document:click')
+  closeNotifs() {
+    this.showNotifs = false;
+  }
+
+  onNotifsUpdated(updated: Notification[]) {
+    this.notifications = updated;
+  }
+
+  private loadNotifications() {
+    this.notifService.getNotifications().subscribe({
+      next: (list) => { this.notifications = list; },
+      error: () => {},
+    });
   }
 
   private refreshBoxStatus() {

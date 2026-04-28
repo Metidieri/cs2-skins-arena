@@ -1,51 +1,83 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-not-found',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [RouterLink],
   template: `
-    <main class="page">
-      <div class="card">
-        <div class="ghost">404</div>
-        <h1>Página no encontrada</h1>
-        <p>El destino al que intentaste acceder no existe o fue movido.</p>
-        <a routerLink="/" class="cta">VOLVER AL INICIO</a>
+    <main class="nf-page">
+      <div class="nf-card">
+        <div class="nf-number">404</div>
+        <div class="nf-glitch" aria-hidden="true">404</div>
+        <h1 class="nf-title">Página no encontrada</h1>
+        <p class="nf-sub">El destino al que intentaste acceder no existe o fue eliminado.</p>
+        <div class="nf-actions">
+          <a routerLink="/coinflip" class="btn btn-primary">Ir al lobby</a>
+          <a routerLink="/" class="btn btn-ghost">Inicio</a>
+        </div>
       </div>
     </main>
   `,
   styles: [`
     :host { display: block; }
-    .page {
-      min-height: 100vh; background: #0a0a0f; color: #e0e0e0;
+    .nf-page {
+      min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
       padding: 2rem;
+      background: var(--bg-base);
     }
-    .card {
-      background: linear-gradient(135deg, #16161a 0%, #1f1216 100%);
-      border: 1px solid #2a2a35; border-radius: 16px;
-      padding: 3rem 2.5rem; text-align: center; max-width: 460px;
-      box-shadow: 0 0 60px rgba(255,107,0,0.08);
+    .nf-card {
+      text-align: center;
+      max-width: 480px;
+      width: 100%;
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      position: relative;
     }
-    .ghost {
-      font-size: 6rem; font-weight: 900; line-height: 1; margin-bottom: 0.4rem;
-      background: linear-gradient(180deg, #ff6b00, #ffd700);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-      letter-spacing: 0.06em;
+    .nf-number {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(80px, 18vw, 140px);
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--gold) 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: bounce-up 1.2s cubic-bezier(.36,.07,.19,.97) infinite alternate;
+      position: relative; z-index: 1;
+      letter-spacing: 0.04em;
     }
-    h1 { color: #e0e0e0; margin: 0.4rem 0; font-size: 1.5rem; }
-    p { color: #888; margin: 0.4rem 0 1.6rem; }
-    .cta {
-      display: inline-block;
-      background: linear-gradient(135deg, #ff6b00, #ff3d00); color: #fff;
-      padding: 0.85rem 1.6rem; border-radius: 10px;
-      text-decoration: none; font-weight: 800; letter-spacing: 0.08em;
-      box-shadow: 0 4px 18px rgba(255,107,0,0.32);
-      transition: transform 0.15s;
+    @keyframes bounce-up {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-12px); }
     }
-    .cta:hover { transform: translateY(-2px); }
+    .nf-glitch {
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(80px, 18vw, 140px);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--accent);
+      opacity: 0.08;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      animation: glitch 3s steps(2) infinite;
+      filter: blur(2px);
+    }
+    @keyframes glitch {
+      0%   { clip-path: inset(0 0 95% 0); transform: translateX(calc(-50% - 4px)); }
+      25%  { clip-path: inset(30% 0 50% 0); transform: translateX(calc(-50% + 3px)); }
+      50%  { clip-path: inset(60% 0 20% 0); transform: translateX(calc(-50% - 2px)); }
+      75%  { clip-path: inset(80% 0 5% 0); transform: translateX(calc(-50% + 4px)); }
+      100% { clip-path: inset(95% 0 0 0); transform: translateX(-50%); }
+    }
+    .nf-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 28px; font-weight: 700;
+      color: var(--text-primary); margin: 0;
+    }
+    .nf-sub { color: var(--text-secondary); font-size: 14px; margin: 0; max-width: 360px; }
+    .nf-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem; }
   `],
 })
 export class NotFoundComponent {}

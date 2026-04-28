@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/db');
 const { addExperience } = require('../services/levelService');
 const { getBotWithSkin } = require('../services/botService');
+const { createNotification } = require('../services/notificationService');
 
 let io = null;
 function setIo(instance) {
@@ -97,6 +98,18 @@ async function joinBattle(req, res) {
       data: { playerBId: userId, skinBId: skinId, status: 'in_progress' },
     });
 
+    const joiner = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, isBot: true } });
+    if (joiner && !joiner.isBot) {
+      createNotification(
+        battle.playerAId,
+        'battle_joined',
+        'Rival encontrado',
+        `${joiner.username} se unió a tu batalla`,
+        { battleId },
+        io,
+      ).catch(() => {});
+    }
+
     const resolved = await resolveBattle(updated);
     res.json(resolved);
   } catch (err) {
@@ -116,7 +129,7 @@ async function callBot(req, res) {
     if (battle.playerAId !== userId) return res.status(403).json({ error: 'No eres el creador de esta batalla' });
 
     const botData = await getBotWithSkin(prisma);
-    if (!botData) return res.status(400).json({ error: 'No hay bots disponibles con skins' });
+    if (!botData) return res.status(503).json({ error: 'No hay bots disponibles en este momento' });
 
     const { bot, skin } = botData;
     const resolved = await joinBattleInternal(battleId, bot.id, skin.id);
@@ -202,6 +215,23 @@ async function resolveBattle(battle) {
       currentXp: levelUpdate.currentXp,
       xpNeeded: levelUpdate.xpNeeded,
     });
+  }
+
+  // Notificaciones
+  const [winnerIsBot, loserIsBot] = await Promise.all([
+    prisma.user.findUnique({ where: { id: winnerId }, select: { isBot: true } }),
+    prisma.user.findUnique({ where: { id: loserId }, select: { isBot: true } }),
+  ]);
+  if (!winnerIsBot?.isBot) {
+    createNotification(winnerId, 'battle_won', '¡Victoria!',
+      `Ganaste ${skinA?.name} y ${skinB?.name}`,
+      { battleId: battle.id }, io).catch(() => {});
+  }
+  if (!loserIsBot?.isBot) {
+    const loserSkin = loserId === battle.playerAId ? skinA : skinB;
+    createNotification(loserId, 'battle_lost', 'Derrota',
+      `Perdiste ${loserSkin?.name}`,
+      { battleId: battle.id }, io).catch(() => {});
   }
 
   const [playerA, playerB] = await Promise.all([

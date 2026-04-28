@@ -152,6 +152,61 @@ const PRESETS = [100, 500, 1000, 5000];
         </div>
       </section>
 
+      <!-- REFERIDOS -->
+      <section class="card referral-card" *ngIf="referral()">
+        <header class="section-header">
+          <span class="section-title">🎁 Programa de referidos</span>
+          <span class="section-meta">+500 coins para ti y tu amigo</span>
+        </header>
+
+        <div class="referral-code-row">
+          <div class="referral-code-wrap">
+            <span class="referral-label">Tu código de referido</span>
+            <div class="referral-code-box">
+              <span class="referral-code">{{ referral()!.code }}</span>
+              <button class="copy-btn" (click)="copyCode(referral()!.code)" [class.copied]="codeCopied">
+                <svg *ngIf="!codeCopied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+                </svg>
+                <svg *ngIf="codeCopied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                {{ codeCopied ? 'Copiado' : 'Copiar' }}
+              </button>
+            </div>
+            <div class="referral-link-row">
+              <span class="ref-link">{{ refLink(referral()!.code) }}</span>
+              <button class="copy-btn sm" (click)="copyLink(referral()!.code)" [class.copied]="linkCopied">
+                {{ linkCopied ? '✓' : 'Copiar link' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="referral-stats">
+            <div class="ref-stat">
+              <span class="ref-stat-val">{{ referral()!.totalReferrals }}</span>
+              <span class="ref-stat-label">Amigos invitados</span>
+            </div>
+            <div class="ref-stat">
+              <span class="ref-stat-val gold">{{ referral()!.coinsEarned | number:'1.0-0' }}</span>
+              <span class="ref-stat-label">Coins ganados</span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="referrals().length > 0" class="referrals-list">
+          <span class="referral-label">Amigos registrados</span>
+          <div class="ref-items">
+            <div *ngFor="let r of referrals()" class="ref-item">
+              <span class="ref-avatar">{{ r.username.charAt(0).toUpperCase() }}</span>
+              <span class="ref-name">{{ r.username }}</span>
+              <span class="ref-date">{{ r.createdAt | date:'shortDate' }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ATAJOS -->
       <section class="actions">
         <a routerLink="/stats" class="btn btn-ghost">Ver estadísticas</a>
@@ -338,6 +393,70 @@ const PRESETS = [100, 500, 1000, 5000];
     @media (max-width: 720px) { .metric.biggest { grid-column: span 1; } }
     .metric.biggest .metric-value { font-size: 36px; }
 
+    /* Referral */
+    .referral-card { display: flex; flex-direction: column; gap: 1rem; }
+    .referral-code-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .referral-code-wrap { flex: 1; display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+    .referral-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .referral-code-box {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: var(--bg-elevated); border: 1px solid var(--border-default);
+      border-radius: var(--radius-md); padding: 0.75rem 1rem;
+    }
+    .referral-code {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 22px; font-weight: 700;
+      color: var(--accent); letter-spacing: 0.06em;
+      flex: 1;
+    }
+    .copy-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: var(--bg-surface); border: 1px solid var(--border-default);
+      color: var(--text-secondary); padding: 0.4rem 0.8rem;
+      border-radius: var(--radius-sm); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .copy-btn svg { width: 13px; height: 13px; }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); background: var(--green-muted); }
+    .copy-btn.sm { font-size: 11px; padding: 0.3rem 0.6rem; }
+    .referral-link-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm); padding: 0.4rem 0.75rem;
+    }
+    .ref-link {
+      font-size: 11px; color: var(--text-muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+    }
+    .referral-stats { display: flex; flex-direction: column; gap: 0.75rem; justify-content: center; }
+    .ref-stat { text-align: center; min-width: 100px; }
+    .ref-stat-val {
+      display: block;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 32px; font-weight: 700;
+      color: var(--text-primary); line-height: 1;
+    }
+    .ref-stat-val.gold { color: var(--gold); }
+    .ref-stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; }
+    .referrals-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .ref-items { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+    .ref-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.4rem 0.6rem;
+      background: var(--bg-elevated); border-radius: var(--radius-sm);
+    }
+    .ref-avatar {
+      width: 24px; height: 24px;
+      background: linear-gradient(135deg, var(--accent), #ff3d00);
+      border-radius: 6px; color: #fff;
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ref-name { flex: 1; font-size: 13px; color: var(--text-primary); font-weight: 500; }
+    .ref-date { font-size: 11px; color: var(--text-muted); }
+
     /* Actions */
     .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
     .btn-ghost { color: var(--text-secondary); }
@@ -348,6 +467,10 @@ const PRESETS = [100, 500, 1000, 5000];
 export class ProfileComponent implements OnInit {
   profile?: UserProfile;
   stats = signal<StatsResponse['stats'] | null>(null);
+  referral = signal<{ code: string; totalReferrals: number; coinsEarned: number } | null>(null);
+  referrals = signal<{ id: number; username: string; createdAt: string }[]>([]);
+  codeCopied = false;
+  linkCopied = false;
   depositAmount = 500;
   depositing = signal(false);
   presets = PRESETS;
@@ -378,6 +501,8 @@ export class ProfileComponent implements OnInit {
   ngOnInit() {
     this.users.getProfile().subscribe((p) => (this.profile = p));
     this.users.getStats().subscribe((res) => this.stats.set(res.stats));
+    this.users.getReferralCode().subscribe({ next: (r) => this.referral.set(r), error: () => {} });
+    this.users.getReferrals().subscribe({ next: (r) => this.referrals.set(r), error: () => {} });
 
     if (this.route.snapshot.fragment === 'deposit') {
       setTimeout(() => {
@@ -394,6 +519,24 @@ export class ProfileComponent implements OnInit {
 
   validDeposit() {
     return this.depositAmount >= 100 && this.depositAmount <= 10000;
+  }
+
+  refLink(code: string): string {
+    return `${window.location.origin}/register?ref=${code}`;
+  }
+
+  copyCode(code: string) {
+    navigator.clipboard.writeText(code).then(() => {
+      this.codeCopied = true;
+      setTimeout(() => (this.codeCopied = false), 2000);
+    });
+  }
+
+  copyLink(code: string) {
+    navigator.clipboard.writeText(this.refLink(code)).then(() => {
+      this.linkCopied = true;
+      setTimeout(() => (this.linkCopied = false), 2000);
+    });
   }
 
   doDeposit() {

@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Estado actual (último update: 2026-04-27)
+## 1. Estado actual (último update: 2026-04-28)
 
 **Bloque inicial — completado** (`PROMPT_3A` … `PROMPT_7C`)
 - Auth + perfil + stats + historial + inventario.
@@ -19,19 +19,29 @@
 - Sistema de design tokens en `frontend/src/styles.scss` con CSS variables (`--bg-base`, `--accent`, `--gold`, `--rarity-*`, `--sidebar-w`, `--radius-*`, `--transition`).
 - Tipografía: **Rajdhani 700** (display) + **Inter 400/500/600** vía `@fontsource/*`.
 - **Sidebar lateral fijo de 240px** (`shared/components/sidebar/`) reemplaza la navbar horizontal. Layout `app-layout` + `main-content` con `margin-left: var(--sidebar-w)`.
-- Todas las páginas (login, register, landing, home, inventory, profile, public-profile, stats, history, coinflip-lobby/battle, jackpot, marketplace, leaderboard, not-found) migradas al estilo CSGOGem-like (gaming dark, glassmorphism sutil, gradients de acento).
+- Todas las páginas migradas al estilo CSGOGem-like (gaming dark, glassmorphism sutil, gradients de acento).
 - Login/register son fullscreen (`position: fixed; inset: 0; z-index: 999`) con layout 50/50 (form + marketing pane).
-- `SkinCardComponent` y `LoadingBarComponent` rediseñados con tokens.
-- ⚠️ El `NavbarComponent` antiguo en `shared/components/navbar/` **sigue existiendo pero ya nadie lo usa** — decidir si borrar o conservar.
+- ⚠️ El `NavbarComponent` antiguo en `shared/components/navbar/` **sigue existiendo pero ya nadie lo usa**.
 
-**Bloque features (Bloque B) — en progreso**
-- ✅ `FEATURE_1.md` — Sistema de niveles y XP (completado).
-- ✅ `FEATURE_2.md` — Cajas diarias gratuitas por nivel (completado).
-- ✅ `FEATURE_3.md` — Chat general en tiempo real (completado).
-- ✅ `FEATURE_4.md` — Ruleta con rojo, negro y verde (completado).
-- ✅ `FEATURE_5.md` — Bots para coinflip + Opening de cajas (completado).
+**Bloque features (Bloque B) — COMPLETADO**
+- ✅ `FEATURE_1.md` — Sistema de niveles y XP.
+- ✅ `FEATURE_2.md` — Cajas diarias gratuitas por nivel.
+- ✅ `FEATURE_3.md` — Chat general en tiempo real.
+- ✅ `FEATURE_4.md` — Ruleta con rojo, negro y verde.
+- ✅ `FEATURE_5.md` — Bots para coinflip + Opening de cajas.
+- ✅ `FEATURE_6.md` — Panel de administración (dashboard, gestión usuarios, ban, coins).
+- ✅ `FEATURE_7.md` — Página Mi Nivel + sistema de referidos (código + bonus 500 coins).
+- ✅ `FEATURE_8.md` — Rediseño completo del Home (3-col, stats bar, hero, feeds en vivo).
+- ✅ `FEATURE_9.md` — Pulido final (skeleton, tooltip, 404 con bounce+glitch, animaciones de ruta, mobile media queries, SEO meta tags).
 
-> Pregunta al usuario qué `FEATURE_*.md` quiere ejecutar a continuación. Cada uno se hace con el patrón: `Lee el archivo FEATURE_X.md y ejecútalo completo paso a paso.`
+**Bloque mejoras y bugfixes — COMPLETADO**
+- ✅ `BUG_1.md` — Seed corregido (cleanup FK ordering, house user, bot skin assignment).
+- ✅ `IMPROVE_1.md` — House edge: casino acumula ingresos de cajas, ruleta y marketplace.
+- ✅ `IMPROVE_2.md` — Contador de usuarios en línea (WebSocket + sidebar).
+- ✅ `IMPROVE_3.md` — Notificaciones in-app (bell en sidebar, dropdown, socket push).
+- ✅ `IMPROVE_4.md` — Sistema de referidos backend (código único, bonus 500 coins, registro con ?ref=).
+
+> **El proyecto está completo.** No quedan features pendientes.
 
 ---
 
@@ -217,3 +227,33 @@ Ejecutar tests backend: `cd backend && npm test` (10 tests, ~3s).
 - **PostgreSQL**: el schema sigue siendo SQLite. Para deploy real cambiar `provider = "postgresql"` en `schema.prisma`.
 - **Capturas para README**: hay placeholders en la tabla de páginas. Sin imágenes reales todavía.
 - **URL de producción**: el README usa `https://cs2-skins-arena.vercel.app` como placeholder.
+- **Mobile sidebar**: en ≤768px el sidebar se oculta con `display:none`. Si se quiere sidebar deslizable en mobile, añadir hamburger button + drawer.
+
+## 9. Nuevos endpoints añadidos en el bloque B
+
+| Método | Ruta | Auth | Feature |
+|--------|------|------|---------|
+| GET | `/api/notifications` | ✓ | IMPROVE_3 |
+| POST | `/api/notifications/read-all` | ✓ | IMPROVE_3 |
+| POST | `/api/notifications/:id/read` | ✓ | IMPROVE_3 |
+| GET | `/api/admin/stats` | ADMIN | FEATURE_6 |
+| GET | `/api/admin/users` | ADMIN | FEATURE_6 |
+| POST | `/api/admin/users/:id/ban` | ADMIN | FEATURE_6 |
+| POST | `/api/admin/users/:id/give-coins` | ADMIN | FEATURE_6 |
+| GET | `/api/admin/skins` | ADMIN | FEATURE_6 |
+| GET | `/api/users/progression` | ✓ | FEATURE_7 |
+| GET | `/api/users/referral-code` | ✓ | IMPROVE_4 |
+| GET | `/api/users/referrals` | ✓ | IMPROVE_4 |
+| GET | `/api/market/house-listings` | — | IMPROVE_1 |
+| GET | `/api/drops/recent` | — | IMPROVE_2 |
+| GET | `/api/home/feed` | — | FEATURE_8 |
+| GET | `/api/stats/online` | — | IMPROVE_2 |
+
+## 10. Nuevos eventos socket añadidos
+
+| Evento (server → client) | Feature |
+|--------------------------|---------|
+| `users:online_count` | IMPROVE_2 |
+| `drop:case_opened` | IMPROVE_2 |
+| `notification:new` | IMPROVE_3 |
+| `user:leveled-up` | FEATURE_1 |

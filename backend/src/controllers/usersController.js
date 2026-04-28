@@ -221,4 +221,101 @@ async function deposit(req, res) {
   }
 }
 
-module.exports = { getProfile, getStats, getTransactions, deposit, getLevel };
+async function getProgression(req, res) {
+  try {
+    const { calculateLevel, getXpForLevel } = require('../utils/levelSystem');
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { level: true, experience: true, totalLost: true },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const levelData = calculateLevel(user.experience || 0);
+
+    const recentLosses = await prisma.transaction.findMany({
+      where: { userId: req.userId, type: 'LOSS' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    const levelHistory = recentLosses.map((t) => ({
+      date: t.createdAt,
+      coinsLost: Number(Math.abs(t.amount).toFixed(2)),
+      xpGained: Math.floor(Math.abs(t.amount) * 0.1),
+    }));
+
+    const TIERS = [
+      { name: 'Novato', color: '#6b7280', minLevel: 1, maxLevel: 5, perksDescription: 'Acceso básico a cajas diarias' },
+      { name: 'Competidor', color: '#3b82f6', minLevel: 6, maxLevel: 15, perksDescription: 'Cajas mejoradas con mejores skins' },
+      { name: 'Veterano', color: '#8b5cf6', minLevel: 16, maxLevel: 30, perksDescription: 'Acceso a cajas premium' },
+      { name: 'Elite', color: '#ff6b00', minLevel: 31, maxLevel: 50, perksDescription: 'Cajas de élite con skins raras' },
+      { name: 'Leyenda', color: '#ffd700', minLevel: 51, maxLevel: 9999, perksDescription: 'Las mejores cajas del juego' },
+    ];
+
+    const tierInfo = TIERS.find((t) => levelData.level >= t.minLevel && levelData.level <= t.maxLevel) || TIERS[0];
+
+    const nextRewards = [];
+    for (let i = 0; i < 3; i++) {
+      const targetLevel = levelData.level + i + 1;
+      const boxAvgValue = Math.min(targetLevel * 50, 2000);
+      nextRewards.push({
+        level: targetLevel,
+        boxAvgValue,
+        description: `Caja nivel ${targetLevel}: skins de ${Math.floor(boxAvgValue * 0.2)}-${Math.floor(boxAvgValue * 1.8)} coins`,
+      });
+    }
+
+    res.json({
+      currentLevel: levelData.level,
+      currentXp: levelData.currentXp,
+      xpNeeded: levelData.xpNeeded,
+      progress: levelData.progress,
+      totalLost: user.totalLost,
+      levelHistory,
+      nextRewards,
+      tierInfo,
+    });
+  } catch (err) {
+    console.error('[getProgression]', err);
+    res.status(500).json({ error: 'Error al obtener progresión' });
+  }
+}
+
+async function getReferralCode(req, res) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { referralCode: true },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const totalReferrals = await prisma.user.count({ where: { referredBy: req.userId } });
+    const coinsEarned = totalReferrals * 500;
+
+    if (!user.referralCode) {
+      const authUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+      const code = authUser.username.toUpperCase().slice(0, 4) + Math.random().toString(36).substring(2, 6).toUpperCase();
+      await prisma.user.update({ where: { id: req.userId }, data: { referralCode: code } });
+      return res.json({ code, totalReferrals, coinsEarned });
+    }
+
+    res.json({ code: user.referralCode, totalReferrals, coinsEarned });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener código de referido' });
+  }
+}
+
+async function getReferrals(req, res) {
+  try {
+    const referrals = await prisma.user.findMany({
+      where: { referredBy: req.userId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, username: true, createdAt: true },
+    });
+    res.json(referrals);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener referidos' });
+  }
+}
+
+module.exports = { getProfile, getStats, getTransactions, deposit, getLevel, getProgression, getReferralCode, getReferrals };

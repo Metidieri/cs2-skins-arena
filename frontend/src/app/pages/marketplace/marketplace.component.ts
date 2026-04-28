@@ -32,12 +32,16 @@ const RARITY_VARS: Record<string, string> = {
       <header class="page-head">
         <div>
           <h1 class="title">MARKETPLACE</h1>
-          <p class="subtitle">Compra, vende e intercambia skins entre jugadores.</p>
+          <p class="subtitle">Tienda oficial + mercado P2P entre jugadores.</p>
         </div>
         <button class="btn btn-primary" (click)="openSellModal()">+ VENDER SKIN</button>
       </header>
 
-      <!-- FILTROS en barra horizontal -->
+      <!-- FILTROS P2P en barra horizontal -->
+      <div class="p2p-label">
+        <span class="section-title">👥 Mercado P2P</span>
+        <span class="house-sub">Listings de jugadores</span>
+      </div>
       <section class="filter-bar">
         <div class="filter-row">
           <span class="filter-label">Rareza</span>
@@ -82,7 +86,64 @@ const RARITY_VARS: Record<string, string> = {
         </div>
       </section>
 
-      <!-- GRID -->
+      <!-- TIENDA OFICIAL -->
+      <section class="house-section">
+        <header class="section-header">
+          <div class="house-title-group">
+            <span class="section-title">🏛 Tienda Oficial</span>
+            <span class="house-sub">Skins del sistema · compra directa garantizada</span>
+          </div>
+          <button class="btn btn-ghost" (click)="loadHouseListings()">↻</button>
+        </header>
+
+        <div *ngIf="houseLoading()" class="grid">
+          <div *ngFor="let _ of houseSkeletonArr" class="skeleton skeleton-card"></div>
+        </div>
+
+        <div *ngIf="!houseLoading() && houseListings().length === 0" class="empty-row">
+          La tienda oficial está vacía en este momento.
+        </div>
+
+        <div *ngIf="!houseLoading() && houseListings().length > 0" class="grid">
+          <article
+            *ngFor="let l of houseListings(); trackBy: trackById"
+            class="listing house-listing"
+            [style.--rarity]="rarityVar(l.skin.rarity)">
+            <div class="listing-head">
+              <span class="listing-price">{{ l.price | number:'1.0-0' }} <small>coins</small></span>
+              <span class="rarity-badge">{{ l.skin.rarity }}</span>
+            </div>
+            <div class="listing-img">
+              <img *ngIf="l.skin.imageUrl" [src]="l.skin.imageUrl" [alt]="l.skin.name" />
+              <span *ngIf="!l.skin.imageUrl" class="fallback">?</span>
+            </div>
+            <div class="listing-body">
+              <h3 class="listing-name">{{ l.skin.name }}</h3>
+              <p class="listing-meta">{{ l.skin.weapon }}</p>
+              <div class="listing-foot">
+                <span class="official-badge">OFICIAL</span>
+                <span class="base-price">base {{ l.skin.price | number:'1.0-0' }}</span>
+              </div>
+            </div>
+            <div class="listing-overlay">
+              <button
+                class="btn btn-primary"
+                [disabled]="!canAfford(l)"
+                (click)="askBuy(l)">
+                {{ canAfford(l) ? 'COMPRAR' : 'SIN SALDO' }}
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div *ngIf="houseTotalPages() > 1" class="pagination">
+          <button class="btn btn-ghost" [disabled]="housePage() <= 1" (click)="goHousePage(housePage() - 1)">‹</button>
+          <span class="page-info">{{ housePage() }} / {{ houseTotalPages() }}</span>
+          <button class="btn btn-ghost" [disabled]="housePage() >= houseTotalPages()" (click)="goHousePage(housePage() + 1)">›</button>
+        </div>
+      </section>
+
+      <!-- GRID P2P -->
       <section class="grid-wrap">
         <div *ngIf="loading()" class="grid">
           <div *ngFor="let _ of skeletonArr" class="skeleton skeleton-card"></div>
@@ -469,6 +530,21 @@ const RARITY_VARS: Record<string, string> = {
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.4rem; }
     .page-info { color: var(--text-muted); font-size: 12px; }
 
+    /* Tienda oficial */
+    .house-section { display: flex; flex-direction: column; gap: 0.75rem; }
+    .house-title-group { display: flex; flex-direction: column; gap: 2px; }
+    .house-sub { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+    .official-badge {
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+      background: rgba(16,185,129,0.1); color: #10b981;
+      border: 1px solid rgba(16,185,129,0.25);
+    }
+    .house-listing { border-color: rgba(16,185,129,0.15); }
+    .house-listing::after { background: rgba(16,185,129,0.5); }
+
+    .p2p-label { display: flex; align-items: baseline; gap: 0.75rem; margin-top: 0.5rem; }
+
     /* Mis listings */
     .my-section { margin-top: 1.5rem; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
@@ -632,6 +708,11 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
   buying = false;
 
   skeletonArr = Array.from({ length: 12 });
+  houseListings = signal<Listing[]>([]);
+  houseLoading = signal(true);
+  housePage = signal(1);
+  houseTotalPages = signal(1);
+  houseSkeletonArr = Array.from({ length: 6 });
 
   private subs: Subscription[] = [];
 
@@ -646,6 +727,7 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.reload();
     this.loadMyListings();
+    this.loadHouseListings();
     this.socket.joinMarketplace();
 
     this.subs.push(
@@ -692,6 +774,24 @@ export class MarketplaceComponent implements OnInit, OnDestroy {
 
   loadInventory() {
     this.skins.getInventory().subscribe((s) => this.inventory.set(s));
+  }
+
+  loadHouseListings() {
+    this.houseLoading.set(true);
+    this.market.getHouseListings(this.housePage(), 12).subscribe({
+      next: (res) => {
+        this.houseListings.set(this.normalizeListings(res.items));
+        this.housePage.set(res.page);
+        this.houseTotalPages.set(res.totalPages);
+        this.houseLoading.set(false);
+      },
+      error: () => { this.houseLoading.set(false); },
+    });
+  }
+
+  goHousePage(p: number) {
+    this.housePage.set(p);
+    this.loadHouseListings();
   }
 
   setRarity(r?: string) {

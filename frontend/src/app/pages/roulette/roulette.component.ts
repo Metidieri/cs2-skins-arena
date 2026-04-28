@@ -621,10 +621,6 @@ export class RouletteComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.socket.joinRoulette();
-    this.loadInitialState();
-    this.roulette.getHistory().subscribe((h) => (this.history = h.reverse()));
-
     this.subs.push(
       this.socket.onRouletteNewRound().subscribe((round) => {
         this.onNewRound(round);
@@ -640,6 +636,10 @@ export class RouletteComponent implements OnInit, OnDestroy {
         this.onResult(result);
       }),
     );
+
+    this.socket.joinRoulette();
+    this.loadInitialState();
+    this.roulette.getHistory().subscribe((h) => (this.history = h.reverse()));
   }
 
   ngOnDestroy() {

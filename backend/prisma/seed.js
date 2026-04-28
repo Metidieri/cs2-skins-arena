@@ -17,6 +17,15 @@ const SKIN_DEFINITIONS = [
   { name: 'Blaze', weapon: 'Desert Eagle', rarity: 'Restricted', price: 600, marketName: 'Desert Eagle | Blaze (Factory New)' },
   { name: 'Fade', weapon: 'Glock-18', rarity: 'Restricted', price: 480, marketName: 'Glock-18 | Fade (Factory New)' },
   { name: 'Kill Confirmed', weapon: 'USP-S', rarity: 'Covert', price: 220, marketName: 'USP-S | Kill Confirmed (Factory New)' },
+  // Cheap skins for daily box low-level ranges
+  { name: 'Stained', weapon: 'AK-47', rarity: 'Consumer Grade', price: 15, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/1/medium' },
+  { name: 'Safari Mesh', weapon: 'AK-47', rarity: 'Consumer Grade', price: 8, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/2/medium' },
+  { name: 'Contractor', weapon: 'P90', rarity: 'Industrial Grade', price: 25, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/3/medium' },
+  { name: 'Sand Dune', weapon: 'AK-47', rarity: 'Consumer Grade', price: 5, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/4/medium' },
+  { name: 'Forest DDPAT', weapon: 'M4A4', rarity: 'Consumer Grade', price: 12, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/5/medium' },
+  { name: 'Bone Mask', weapon: 'AK-47', rarity: 'Industrial Grade', price: 35, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/6/medium' },
+  { name: 'Basilisk', weapon: 'P250', rarity: 'Mil-Spec Grade', price: 120, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/7/medium' },
+  { name: 'Scorched', weapon: 'AWP', rarity: 'Industrial Grade', price: 45, imageUrl: 'https://community.cloudflare.steamstatic.com/economy/image/class/730/8/medium' },
 ];
 
 const TX_DESCRIPTIONS = {
@@ -52,9 +61,15 @@ async function buildTransactionsForUser(userId) {
 
 async function main() {
   console.log('[seed] limpiando datos previos...');
+  await prisma.notification.deleteMany();
+  await prisma.rouletteBet.deleteMany();
+  await prisma.rouletteRound.deleteMany();
+  await prisma.chatMessage.deleteMany();
   await prisma.battle.deleteMany();
   await prisma.jackpotEntry.deleteMany();
   await prisma.jackpot.deleteMany();
+  await prisma.listing.deleteMany();
+  await prisma.dailyBox.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.userSkin.deleteMany();
   await prisma.skin.deleteMany();
@@ -63,13 +78,26 @@ async function main() {
 
   const user1 = await prisma.user.upsert({
     where: { email: 'admin@cs2arena.com' },
-    update: { balance: 5000 },
-    create: { email: 'admin@cs2arena.com', username: 'Admin', password, balance: 5000 },
+    update: { balance: 5000, role: 'ADMIN' },
+    create: { email: 'admin@cs2arena.com', username: 'Admin', password, balance: 5000, role: 'ADMIN' },
   });
   const user2 = await prisma.user.upsert({
     where: { email: 'player@cs2arena.com' },
     update: { balance: 2500 },
     create: { email: 'player@cs2arena.com', username: 'Player1', password, balance: 2500 },
+  });
+
+  await prisma.user.upsert({
+    where: { email: 'house@arena.internal' },
+    update: {},
+    create: {
+      username: 'CS2_Arena',
+      email: 'house@arena.internal',
+      password: 'house_account_not_login',
+      balance: 0,
+      isBot: true,
+      role: 'ADMIN',
+    },
   });
 
   console.log('[seed] usuarios listos:', user1.username, user2.username);
@@ -99,6 +127,30 @@ async function main() {
   }
 
   console.log(`[seed] skins creados: ${skins.length} (Steam: ${steamHits}, placeholder: ${placeholderHits})`);
+
+  // Bots: asegurar que existen ANTES de asignar inventarios
+  await ensureBotsExist(prisma);
+  const bots = await prisma.user.findMany({ where: { isBot: true, email: { not: 'house@arena.internal' } } });
+
+  // Limpiar UserSkins de bots por si acaso quedaron referencias obsoletas
+  for (const bot of bots) {
+    await prisma.userSkin.deleteMany({ where: { userId: bot.id } });
+  }
+
+  // Asignar 3 skins escalonadas a cada bot (sin repetición dentro del mismo bot)
+  for (let i = 0; i < bots.length; i++) {
+    const chosen = [
+      (i * 3 + 0) % 11,
+      (i * 3 + 1) % 11,
+      (i * 3 + 2) % 11,
+    ];
+    for (const idx of chosen) {
+      await prisma.userSkin.create({
+        data: { userId: bots[i].id, skinId: skins[idx].id },
+      });
+    }
+  }
+  console.log(`[seed] bots configurados: ${bots.length} bots con 3 skins escalonadas cada uno`);
 
   // Cada usuario recibe al menos 3 skins distintas (aquí 5 para variedad)
   const inventoryAssignments = [
@@ -162,23 +214,6 @@ async function main() {
   await prisma.jackpot.create({ data: { status: 'open' } });
 
   console.log(`[seed] jackpot histórico creado (${jackpotEntriesData.length} entries, ganador ${winner.username}) + 1 jackpot abierto vacío`);
-  // Bots: create if missing and assign 3 skins each
-  await ensureBotsExist(prisma);
-  const bots = await prisma.user.findMany({ where: { isBot: true } });
-  const botSkinPool = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // all skin indexes
-  for (const bot of bots) {
-    // Pick 3 random skins from the pool
-    const shuffled = [...botSkinPool].sort(() => Math.random() - 0.5);
-    const chosen = shuffled.slice(0, 3);
-    for (const idx of chosen) {
-      await prisma.userSkin.upsert({
-        where: { userId_skinId: { userId: bot.id, skinId: skins[idx].id } },
-        create: { userId: bot.id, skinId: skins[idx].id },
-        update: {},
-      });
-    }
-  }
-  console.log(`[seed] bots configurados: ${bots.length} bots con 3 skins cada uno`);
 
   console.log('[seed] completado');
 }

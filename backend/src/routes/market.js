@@ -5,12 +5,14 @@ const {
   buyListing,
   cancelListing,
   getMyListings,
+  getHouseListings,
 } = require('../controllers/marketController');
 const authMiddleware = require('../middleware/auth');
 const { validators } = require('../middleware/validate');
 
 const router = Router();
 
+router.get('/house-listings', getHouseListings);
 router.get('/', getListings);
 router.post('/', authMiddleware, validators.createListing, createListing);
 router.get('/my-listings', authMiddleware, getMyListings);

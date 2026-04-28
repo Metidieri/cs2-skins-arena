@@ -13,6 +13,9 @@ const boxRoutes = require('./routes/boxes');
 const chatRoutes = require('./routes/chat');
 const rouletteRoutes = require('./routes/roulette');
 const casesRoutes = require('./routes/cases');
+const notificationsRoutes = require('./routes/notifications');
+const adminRoutes = require('./routes/admin');
+const { getRecentDrops, getHomeFeed } = require('./controllers/statsController');
 
 const { generalLimiter, marketLimiter } = require('./middleware/rateLimit');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -58,6 +61,10 @@ function createApp() {
   app.use('/api/chat', chatRoutes);
   app.use('/api/roulette', rouletteRoutes);
   app.use('/api/cases', casesRoutes);
+  app.use('/api/notifications', notificationsRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.get('/api/drops/recent', getRecentDrops);
+  app.get('/api/home/feed', getHomeFeed);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

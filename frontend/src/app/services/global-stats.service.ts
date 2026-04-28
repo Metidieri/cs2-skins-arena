@@ -11,4 +11,12 @@ export class GlobalStatsService {
   getStats(): Observable<GlobalStats> {
     return this.http.get<GlobalStats>(`${environment.apiUrl}/stats`);
   }
+
+  getHomeFeed(): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/home/feed`);
+  }
+
+  getOnlineCount(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${environment.apiUrl}/stats/online`);
+  }
 }

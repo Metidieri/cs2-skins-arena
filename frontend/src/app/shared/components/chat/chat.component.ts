@@ -283,11 +283,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   ngOnInit() {
     if (this.auth.isLoggedIn()) {
       this.chat.joinChat();
-      this.chat.getHistory().subscribe((msgs) => {
-        this.messages = msgs;
-        this.shouldScrollOnCheck = true;
-      });
     }
+
+    this.chat.getHistory().subscribe((msgs) => {
+      this.messages = msgs;
+      this.shouldScrollOnCheck = true;
+    });
 
     this.sub = this.chat.onMessage().subscribe((msg) => {
       this.messages.push(msg);

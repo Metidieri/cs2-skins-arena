@@ -18,7 +18,7 @@ function publicUserShape(user) {
 
 async function register(req, res) {
   try {
-    const { email, username, password } = req.body;
+    const { email, username, password, referralCode: inputRefCode } = req.body;
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { username }] },
@@ -28,14 +28,41 @@ async function register(req, res) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
+    const myCode = (username.toUpperCase().slice(0, 4) + Math.random().toString(36).substring(2, 6).toUpperCase());
+
+    let referredById = null;
+    let referrer = null;
+    if (inputRefCode) {
+      referrer = await prisma.user.findUnique({ where: { referralCode: inputRefCode } });
+      if (referrer) referredById = referrer.id;
+    }
+
+    const bonusCoins = referredById ? 1500 : 1000;
+
     const user = await prisma.user.create({
-      data: { email, username, password: hashed },
+      data: {
+        email,
+        username,
+        password: hashed,
+        balance: bonusCoins,
+        referralCode: myCode,
+        referredBy: referredById,
+      },
     });
+
+    if (referrer) {
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: referrer.id }, data: { balance: { increment: 500 } } }),
+        prisma.transaction.create({ data: { userId: referrer.id, type: 'DEPOSIT', amount: 500, description: 'Bonus de referido' } }),
+        prisma.transaction.create({ data: { userId: user.id, type: 'DEPOSIT', amount: 500, description: 'Bonus de referido - bienvenida' } }),
+      ]);
+    }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({ token, user: publicUserShape(user) });
   } catch (err) {
+    console.error('[register]', err);
     res.status(500).json({ error: 'Error al registrar usuario' });
   }
 }

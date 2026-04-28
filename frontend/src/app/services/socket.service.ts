@@ -190,6 +190,30 @@ export class SocketService implements OnDestroy {
   joinRoulette(): void { this.socket.emit('join-roulette'); }
   leaveRoulette(): void { this.socket.emit('leave-roulette'); }
 
+  onUsersOnlineCount(): Observable<number> {
+    return new Observable<number>((subscriber) => {
+      const handler = (count: number) => subscriber.next(count);
+      this.socket.on('users:online_count', handler);
+      return () => this.socket.off('users:online_count', handler);
+    });
+  }
+
+  onCaseOpened(): Observable<{ username: string; skin: any; type: string }> {
+    return new Observable((subscriber) => {
+      const handler = (payload: any) => subscriber.next(payload);
+      this.socket.on('drop:case_opened', handler);
+      return () => this.socket.off('drop:case_opened', handler);
+    });
+  }
+
+  onNotification(): Observable<any> {
+    return new Observable((subscriber) => {
+      const handler = (payload: any) => subscriber.next(payload);
+      this.socket.on('notification:new', handler);
+      return () => this.socket.off('notification:new', handler);
+    });
+  }
+
   onRouletteNewRound(): Observable<RouletteRound & { consecutiveGreens: number; accumulatedJackpot: number }> {
     return new Observable((subscriber) => {
       const handler = (payload: any) => subscriber.next(payload);

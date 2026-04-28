@@ -1,4 +1,6 @@
 const prisma = require('../config/db');
+const { getHouseUserId } = require('../utils/houseService');
+const { createNotification } = require('../services/notificationService');
 
 let io = null;
 function setIo(instance) {
@@ -180,6 +182,19 @@ async function buyListing(req, res) {
 
     if (io) io.to('marketplace').emit('market:sold', updated);
 
+    // Notificación al vendedor
+    const sellerIsBot = await prisma.user.findUnique({ where: { id: listing.sellerId }, select: { isBot: true } });
+    if (!sellerIsBot?.isBot) {
+      createNotification(
+        listing.sellerId,
+        'marketplace_sold',
+        'Skin vendida',
+        `${buyer.username} compró tu ${listing.skin.name} por ${listing.price} coins`,
+        { listingId: listing.id, price: listing.price },
+        io,
+      ).catch(() => {});
+    }
+
     res.json(updated);
   } catch (err) {
     if (err.message === 'LISTING_UNAVAILABLE') {
@@ -240,6 +255,36 @@ async function getMyListings(req, res) {
   }
 }
 
+async function getHouseListings(req, res) {
+  try {
+    const houseId = await getHouseUserId();
+    if (!houseId) return res.json({ items: [], total: 0 });
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+
+    const where = { sellerId: houseId, status: 'active' };
+    const [items, total] = await Promise.all([
+      prisma.listing.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          seller: { select: { id: true, username: true, avatar: true } },
+          skin: true,
+        },
+      }),
+      prisma.listing.count({ where }),
+    ]);
+
+    res.json({ items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
+  } catch (err) {
+    console.error('[getHouseListings]', err);
+    res.status(500).json({ error: 'Error al obtener listings de la casa' });
+  }
+}
+
 module.exports = {
   setIo,
   getListings,
@@ -247,4 +292,5 @@ module.exports = {
   buyListing,
   cancelListing,
   getMyListings,
+  getHouseListings,
 };

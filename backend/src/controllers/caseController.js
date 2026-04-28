@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/db');
 const { CASES, openCase } = require('../utils/caseSystem');
 const { addExperience } = require('../services/levelService');
+const { collectHouseEdge } = require('../utils/houseService');
 
 // Maps case rarity keys to DB rarity strings (case-insensitive match)
 function matchDbRarity(caseRarity) {
@@ -57,6 +58,9 @@ async function openCaseHandler(req, res) {
 
     const profit = selectedSkin.price - caseData.price;
 
+    const houseEdge = caseData.houseEdge || 0;
+    const edgeAmount = houseEdge * caseData.price;
+
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
@@ -84,6 +88,10 @@ async function openCaseHandler(req, res) {
         },
       });
     });
+
+    if (edgeAmount > 0) {
+      await collectHouseEdge(edgeAmount, null);
+    }
 
     await addExperience(userId, caseData.price);
 

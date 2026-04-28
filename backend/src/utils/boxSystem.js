@@ -12,8 +12,7 @@ function getBoxReward(userLevel, openingsToday) {
 function selectSkinByValueRange(skins, minVal, maxVal) {
   const eligible = skins.filter((s) => s.price >= minVal && s.price <= maxVal);
   if (eligible.length === 0) {
-    const mid = (minVal + maxVal) / 2;
-    return skins.sort((a, b) => Math.abs(a.price - mid) - Math.abs(b.price - mid))[0];
+    return skins.slice().sort((a, b) => a.price - b.price)[0];
   }
   return eligible[Math.floor(Math.random() * eligible.length)];
 }

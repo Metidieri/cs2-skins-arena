@@ -37,4 +37,9 @@ export class MarketService {
   getMyListings(): Observable<Listing[]> {
     return this.http.get<Listing[]>(`${this.base}/my-listings`);
   }
+
+  getHouseListings(page = 1, limit = 12): Observable<ListingPage> {
+    const params = new HttpParams().set('page', String(page)).set('limit', String(limit));
+    return this.http.get<ListingPage>(`${this.base}/house-listings`, { params });
+  }
 }

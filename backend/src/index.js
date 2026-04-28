@@ -25,11 +25,28 @@ marketController.setIo(io);
 boxController.setIo(io);
 rouletteController.init(io);
 
+// Track online authenticated users: socketId -> { userId, username }
+const onlineUsers = new Map();
+// Export so controllers can access count
+app.locals.getOnlineCount = () => onlineUsers.size;
+
 io.on('connection', (socket) => {
   logger.info('Socket connected:', socket.id);
 
-  socket.on('identify', (userId) => {
-    if (userId != null) socket.join(`user-${userId}`);
+  socket.on('identify', async (userId) => {
+    if (userId != null) {
+      socket.join(`user-${userId}`);
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: parseInt(userId) },
+          select: { id: true, username: true, isBot: true },
+        });
+        if (user && !user.isBot) {
+          onlineUsers.set(socket.id, { userId: user.id, username: user.username });
+          io.emit('users:online_count', onlineUsers.size);
+        }
+      } catch (e) {}
+    }
   });
   socket.on('unidentify', (userId) => {
     if (userId != null) socket.leave(`user-${userId}`);
@@ -95,7 +112,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => logger.info('Socket disconnected:', socket.id));
+  socket.on('disconnect', () => {
+    if (onlineUsers.has(socket.id)) {
+      onlineUsers.delete(socket.id);
+      io.emit('users:online_count', onlineUsers.size);
+    }
+    logger.info('Socket disconnected:', socket.id);
+  });
 });
 
 const PORT = process.env.PORT || 3000;

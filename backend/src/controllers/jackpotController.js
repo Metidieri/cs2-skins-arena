@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const prisma = require('../config/db');
 const { addExperience } = require('../services/levelService');
+const { createNotification } = require('../services/notificationService');
 
 const RESOLVE_DELAY_MS = 30 * 1000;
 
@@ -268,6 +269,14 @@ async function resolveJackpot(jackpot) {
       entries: finalJackpot.entries,
       winnerChance,
     });
+  }
+
+  // Notificación al ganador
+  const winnerIsBot = await prisma.user.findUnique({ where: { id: winnerId }, select: { isBot: true } });
+  if (!winnerIsBot?.isBot) {
+    createNotification(winnerId, 'jackpot_won', '¡Jackpot!',
+      `Ganaste el pot de ${jackpot.totalValue.toFixed(0)} coins`,
+      { jackpotId: jackpot.id, totalValue: jackpot.totalValue }, io).catch(() => {});
   }
 
   clearTimerState();

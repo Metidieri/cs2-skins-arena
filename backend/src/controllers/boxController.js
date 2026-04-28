@@ -57,7 +57,7 @@ async function openBox(req, res) {
     const userId = req.userId;
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { level: true, experience: true },
+      select: { level: true, experience: true, username: true },
     });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
@@ -110,6 +110,17 @@ async function openBox(req, res) {
         skin: selectedSkin,
         coinsValue: selectedSkin.price,
         isNewRecord,
+      });
+      io.emit('drop:case_opened', {
+        username: user?.username || 'Jugador',
+        skin: {
+          name: selectedSkin.name,
+          imageUrl: selectedSkin.imageUrl,
+          price: selectedSkin.price,
+          rarity: selectedSkin.rarity,
+          weapon: selectedSkin.weapon,
+        },
+        type: 'case',
       });
     }
 
